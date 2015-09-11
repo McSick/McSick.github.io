@@ -1,0 +1,36 @@
+<div class="row">
+<div class="col-md-8">
+<div class="row" ng-repeat="game in games">
+  <div class="col-md-4">
+	{{game.Away}} AT {{game.Home}}
+  </div>
+
+    <div class="col-md-4">Winner:
+  <select ng-model="winners[$index].team">
+	<option>{{game.Away}}</option>
+	<option>{{game.Home}}</option>
+  </select>
+  </div>
+  <div class="col-md-2">
+	<select ng-options="point as point for point in points" ng-model="winners[$index].points"></select>
+  </div>
+  <div class="col-md-2">
+	<button class="btn btn-primary" ng-click="addGame($index)">Add</button>
+  </div>
+  
+</div>
+</div>
+<div class="col-md-4">
+	<div class="row" ng-repeat="pick in picks">
+		<div class="col-md-6">
+			{{pick.winner}} - {{pick.points}}
+		</div>
+		<div class="col-md-2">
+			<button class="btn btn-danger">Remove</button>
+		</div>
+	</div>
+</div>
+
+</div>
+
+
