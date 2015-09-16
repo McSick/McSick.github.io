@@ -1,4 +1,8 @@
 /* app css stylesheet */
+.even{
+background-color:#f9f9f9;
+
+}
 
 .menu {
   list-style: none;

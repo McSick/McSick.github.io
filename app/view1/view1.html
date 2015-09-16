@@ -1,32 +1,53 @@
 <div class="row">
-<div class="col-md-8">
-<div class="row" ng-repeat="game in games">
-  <div class="col-md-4">
-	{{game.Away}} AT {{game.Home}}
+<div class="col-md-8"  style="border:1px solid black;height:800px;">
+<div class="row" style="margin-bottom:20px;margin-top:10px;">
+<div class="col-md-3" >
+<input ng-model="name" class="input input-md form-control" style="margin-left:5px;" placeholder="name"/>
+</div>
+
+<div class="col-md-2">
+<button class="btn btn-primary" ng-disabled="(picks.length != 16) || !name" ng-click="submit()">Submit</button>
+</div>
+<div class="col-md-2">
+<button class="btn btn-success" ng-click="getPicks()">Get Picks</button>
+</div>
+
+</div>
+<div class="row" ng-repeat="game in games | orderBy:'id'" ng-class="{even:($index%2)}" >
+  <div class="col-md-3">
+	<label style="margin-left:5px;">{{game.Away}} AT {{game.Home}}</label>
   </div>
 
-    <div class="col-md-4">Winner:
-  <select ng-model="winners[$index].team">
+    <div class="col-md-1"><label>Winner:</label></div>
+	<div class="col-md-3">
+  <select ng-model="winners[game.id].team" class="input input-sm form-control">
 	<option>{{game.Away}}</option>
 	<option>{{game.Home}}</option>
   </select>
   </div>
+  <div class="col-md-1"><label>Points:</label></div>
   <div class="col-md-2">
-	<select ng-options="point as point for point in points" ng-model="winners[$index].points"></select>
+	<select ng-options="point as point for point in points | orderBy:'-'" ng-model="winners[game.id].points" class="input input-sm form-control"></select>
   </div>
   <div class="col-md-2">
-	<button class="btn btn-primary" ng-click="addGame($index)">Add</button>
+	<button class="btn btn-primary" ng-click="addGame(game.id)" ng-disabled="(!(winners[game.id].team) || !(winners[game.id].points))">Add</button>
   </div>
   
 </div>
 </div>
-<div class="col-md-4">
-	<div class="row" ng-repeat="pick in picks">
+<div class="col-md-4" style="border:1px solid black;height:800px;">
+
+<div class="row" style="margin-bottom:20px">
+<div class="col-md-12">
+<h3 style="text-decoration:underline;">Final Picks</h3>
+</div>
+</div>
+	<div class="row" ng-repeat="pick in picks | orderBy: 'points'" ng-class="{even:($index%2)}" >
 		<div class="col-md-6">
-			{{pick.winner}} - {{pick.points}}
+			<label>{{pick.winner}} - {{pick.points}}</label>
 		</div>
 		<div class="col-md-2">
-			<button class="btn btn-danger">Remove</button>
+			<button class="btn btn-danger btn-sm" ng-click="removeGame($index)">Remove</button>
 		</div>
 	</div>
 </div>
