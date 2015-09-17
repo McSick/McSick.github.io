@@ -64,7 +64,7 @@ angular.module('myApp.view1', ['ngRoute', 'firebase'])
 
 	};
 
-	$scope.addGame = function (index) {
+	$scope.addGame = function (game,index) {
 	
 	    if((!($scope.winners[game.id].team) || !($scope.winners[game.id].points))){
 			alert('Please select both a team and points first!');

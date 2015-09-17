@@ -30,7 +30,7 @@
 	<select ng-options="point as point for point in points | orderBy:'-'" ng-model="winners[game.id].points" class="input input-sm form-control"></select>
   </div>
   <div class="col-md-2">
-	<button class="btn btn-primary" ng-click="addGame(game.id)" >Add</button>
+	<button class="btn btn-primary" ng-click="addGame(game,game.id)" >Add</button>
   </div>
   
 </div>
