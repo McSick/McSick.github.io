@@ -23,7 +23,7 @@ angular.module('myApp.view1', ['ngRoute', 'firebase'])
 	$scope.init = function () {
 		for (var i = 0; i < week2.length; i++) {
 			var pick = {
-				team : week2[i].Away,
+				team : week2[i].Home,
 				points : ''
 			}
 			$scope.winners[i] = pick;
@@ -60,11 +60,17 @@ angular.module('myApp.view1', ['ngRoute', 'firebase'])
 			$scope.savedPicks[pick.points] = pick.winner;
 		}
 		$scope.savedPicks.$save();
+		alert('Saved Picks!');
 
 	};
 
 	$scope.addGame = function (index) {
-		console.log(index + ' game - ' + $scope.winners[index] + ' ' + $scope.winners[index].points);
+	
+	    if((!(winners[game.id].team) || !(winners[game.id].points)){
+			alert('Please select both a team and points first!');
+			return;
+		}
+
 		$scope.picks.push({
 			winner : $scope.winners[index].team,
 			points : $scope.winners[index].points
