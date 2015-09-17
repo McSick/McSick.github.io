@@ -54,6 +54,9 @@ angular.module('myApp.view1', ['ngRoute', 'firebase'])
 
 	};
 	$scope.submit = function () {
+		if(($scope.picks.length != 16) || !$scope.name){
+			alert('Please Enter your name and Add all 16 games!');
+		}
 		$scope.savedPicks = $firebaseObject(ref.child('week2').child($scope.name));
 		for (var i = 0; i < $scope.picks.length; i++) {
 			var pick = $scope.picks[i];
