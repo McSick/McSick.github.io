@@ -4,8 +4,15 @@
 angular.module('myApp', [
   'ngRoute',
   'myApp.view1',
+  'myApp.WeeklyPicks',
   'myApp.version'
 ]).
 config(['$routeProvider', function($routeProvider) {
-  $routeProvider.otherwise({redirectTo: '/view1'});
+   $routeProvider.
+   when('WeeklyPicks',{
+		templateUrl:'WeeklyPicks/WeeklyPicks.html',
+		controller:'WeeklyPicksCtrl'
+		} 
+	).
+   otherwise({redirectTo: '/WeeklyPicks'});
 }]);
