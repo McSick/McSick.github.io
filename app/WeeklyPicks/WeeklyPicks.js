@@ -15,6 +15,7 @@ angular.module('myApp.WeeklyPicks', ['ngRoute','firebase'])
 	$scope.week = {};
 	$scope.winners = ['Broncos'];
 	$scope.losers = ['Chiefs'];
+	$scope.totals = [];
 	$scope.init= function(){
 		$scope.week = $firebaseObject(ref.child('week2'));
 	/*	week.$loaded(function(week){
@@ -28,6 +29,18 @@ angular.module('myApp.WeeklyPicks', ['ngRoute','firebase'])
 		/*for(var i = 0; i < points.length;i++){
 			$scope.week[
 		}*/
+		$scope.week.$loaded(function(week){
+		
+			week.forEach(function(picks,name){
+				var total = 0;
+				angular.forEach(picks,function(team,point){
+					if($scope.winners.indexOf(team) >= 0){
+						total += parseInt(point);
+					}
+				});
+				$scope.totals[name] = total;
+			});
+		});
 	}
 	
 	$scope.init();

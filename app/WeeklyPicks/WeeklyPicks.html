@@ -1,22 +1,29 @@
 <h1>Everyones Picks</h1>
 <div class="row" style="margin-left:20px">
-	<div ng-repeat="(name, picks) in week" class="col-md-1" >
+	<div ng-repeat="(name, picks) in week" class="col-md-1" style="border:1px solid grey;">
 	
-		<div  class="row" style="border:1px solid grey;">
+		<div  class="row" >
 			<div class="col-md-12">
 				<label style="text-decoration:underline;">{{name}}</label>
 			</div>
-		<div>
-		<div ng-repeat="(score,team) in picks" class="row myRow" style="margin-left:0px"  >
+		</div>
+		<div ng-repeat="(score,team) in picks" class="row myRow"  ng-class="{even:($index%2),success:winners.indexOf(team) >= 0,danger:losers.indexOf(team) >= 0}" >
 
-			<div class="col-md-5" ng-class="{even:($index%2),success:winners.indexOf(team) >= 0,danger:losers.indexOf(team) >= 0}">
+			<div class="col-md-6" >
 				<label style="text-align:center;">{{score}}</label>
 			</div>
-			<div class="col-md-6" ng-class="{even:($index%2),success:winners.indexOf(team) >= 0,danger:losers.indexOf(team) >= 0}">
+			<div class="col-md-6">
 				<label>{{team}}</label>
 			</div>
-		<div>
+		</div>
+		<div  class="row" style="border:1px solid grey;">
+			<div class="col-md-12">
+				<label >{{totals[name]}} points</label>
+			</div>
+		</div>
+		
 
 	</div>
+	
 
 </div>
