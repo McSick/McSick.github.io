@@ -3,6 +3,12 @@
 background-color:#f9f9f9;
 
 }
+.danger{
+ background-color:#f2dede !important;
+}
+.success{
+background-color:#dff0d8 !important;
+}
 
 .menu {
   list-style: none;

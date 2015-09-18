@@ -13,6 +13,8 @@ angular.module('myApp.WeeklyPicks', ['ngRoute','firebase'])
 	var ref = new Firebase("https://nflquickpick.firebaseio.com");
 	
 	$scope.week = {};
+	$scope.winners = ['Broncos'];
+	$scope.losers = ['Chiefs'];
 	$scope.init= function(){
 		$scope.week = $firebaseObject(ref.child('week2'));
 	/*	week.$loaded(function(week){
