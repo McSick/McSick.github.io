@@ -9,10 +9,10 @@
 		</div>
 		<div ng-repeat="(score,team) in picks" class="row myRow"  ng-class="{even:($index%2),success:winners.indexOf(team) >= 0,danger:losers.indexOf(team) >= 0}" >
 
-			<div class="col-md-4 col-sm-5 col-xs-6" >
+			<div class="col-md-6 col-sm-6 col-xs-6" >
 				<label style="text-align:center;">{{score}}</label>
 			</div>
-			<div class="col-md-8 col-sm-7 col-xs-6">
+			<div class="col-md-6 col-sm-6 col-xs-6">
 				<label>{{team}}</label>
 			</div>
 		</div>
