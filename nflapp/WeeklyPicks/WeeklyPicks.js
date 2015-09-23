@@ -3,25 +3,39 @@
 angular.module('myApp.WeeklyPicks', ['ngRoute','firebase'])
 
 .config(['$routeProvider', function($routeProvider) {
-  $routeProvider.when('/WeeklyPicks', {
+  $routeProvider.when('/WeeklyPicks/:week', {
     templateUrl: 'WeeklyPicks/WeeklyPicks.html',
     controller: 'WeeklyPicksCtrl'
   });
 }])
 
-.controller('WeeklyPicksCtrl', function($scope, $firebaseObject) {
+.controller('WeeklyPicksCtrl', function($scope, $firebaseObject,$firebaseArray,$routeParams) {
 	var ref = new Firebase("https://nflquickpick.firebaseio.com");
-	
+	$scope.weeknumber = $routeParams.week;
 	$scope.week = {};
-	$scope.winners = ['Broncos','Patriots','Browns','Panthers','Cardinals','Bengals','Vikings','Buccaneers','Falcons','Steelers','Redskins','Raiders','Cowboys','Jaguars','Packers','Jets'];
-	$scope.losers = ['Chiefs','Bills','Titans','Texans','Bears','Chargers','Lions','Saints','Giants','49ers','Rams','Ravens','Dolphins','Eagles','Seahawks','Colts'];
-	$scope.totals = [];
+  $scope.winners = [];
+  $scope.losers = [];
+
+	var winners = $firebaseArray(ref.child('outcome').child('week'+$scope.weeknumber).child('winners')); //['Broncos','Patriots','Browns','Panthers','Cardinals','Bengals','Vikings','Buccaneers','Falcons','Steelers','Redskins','Raiders','Cowboys','Jaguars','Packers','Jets'];
+
+  winners.$loaded(function(wins){
+    $scope.winners = wins[0];
+    var losers = $firebaseArray(ref.child('outcome').child('week'+$scope.weeknumber).child('losers'));
+
+    losers.$loaded(function(los){
+        $scope.losers = los[0];
+        $scope.init();
+    });
+  });
+
+
+  $scope.totals = [];
 	$scope.init= function(){
-		$scope.week = $firebaseObject(ref.child('week2'));
+		$scope.week = $firebaseObject(ref.child('week'+	$scope.weeknumber));
 	/*	week.$loaded(function(week){
 			week.forEach(function(key,value){
 				$scope.week[key] = value;
-				
+
 			});
 		});
 		*/
@@ -30,7 +44,7 @@ angular.module('myApp.WeeklyPicks', ['ngRoute','firebase'])
 			$scope.week[
 		}*/
 		$scope.week.$loaded(function(week){
-		
+
 			week.forEach(function(picks,name){
 				var total = 0;
 				angular.forEach(picks,function(team,point){
@@ -42,7 +56,6 @@ angular.module('myApp.WeeklyPicks', ['ngRoute','firebase'])
 			});
 		});
 	}
-	
-	$scope.init();
-});
 
+//	$scope.init();
+});
