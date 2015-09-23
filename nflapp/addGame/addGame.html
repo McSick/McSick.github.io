@@ -1,0 +1,24 @@
+<h1>Set Week</h1>
+<div class="row" >
+
+	<div class="col-md-1 col-xs-2">
+		<select class="form-control " ng-model="weeknumber" ng-options="(game + 1) as (game+1) for game in gamenumbers"></select>
+	</div>
+	<div class="col-md-1 col-xs-2">
+		<button class="btn btn-primary" ng-click="submit()">Submit</button>
+	</div>
+	
+</div>
+<div class="row" ng-repeat="game in gamenumbers">
+	<div  class="col-md-1 col-xs-3" >
+		<input class="form-control" ng-model="games[game].Away"/>
+	</div>
+	<div  class="col-md-1 col-xs-1" >
+		<label>At</label>
+	</div>
+	<div  class="col-md-1 col-xs-3" >
+		<input class="form-control" ng-model="games[game].Home"/>
+	</div>
+	
+
+</div>
