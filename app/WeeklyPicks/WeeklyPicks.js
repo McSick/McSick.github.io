@@ -13,8 +13,8 @@ angular.module('myApp.WeeklyPicks', ['ngRoute','firebase'])
 	var ref = new Firebase("https://nflquickpick.firebaseio.com");
 	
 	$scope.week = {};
-	$scope.winners = ['Broncos','Patriots','Browns','Panthers','Cardinals','Bengals','Vikings','Buccaneers','Falcons','Steelers','Redskins','Raiders','Cowboys','Jaguars','Packers'];
-	$scope.losers = ['Chiefs','Bills','Titans','Texans','Bears','Chargers','Lions','Saints','Giants','49ers','Rams','Ravens','Dolphins','Eagles','Seahawks'];
+	$scope.winners = ['Broncos','Patriots','Browns','Panthers','Cardinals','Bengals','Vikings','Buccaneers','Falcons','Steelers','Redskins','Raiders','Cowboys','Jaguars','Packers','Jets'];
+	$scope.losers = ['Chiefs','Bills','Titans','Texans','Bears','Chargers','Lions','Saints','Giants','49ers','Rams','Ravens','Dolphins','Eagles','Seahawks','Colts'];
 	$scope.totals = [];
 	$scope.init= function(){
 		$scope.week = $firebaseObject(ref.child('week2'));
