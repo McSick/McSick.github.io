@@ -11,7 +11,7 @@ angular.module('myApp', [
 config(['$routeProvider', function($routeProvider) {
    $routeProvider.
    when('WeeklyPicks',{
-		templateUrl:'WeeklyPicks/WeeklyPicks.html',
+		templateUrl:'WeeklyPicks/WeeklyPicks/3',
 		controller:'WeeklyPicksCtrl'
 		}
 	).
@@ -25,5 +25,5 @@ config(['$routeProvider', function($routeProvider) {
 		controller:'addGameCtrl'
 		}
 	).
-   otherwise({redirectTo: '/QuickPick'});
+   otherwise({redirectTo: '/WeeklyPIcks/3'});
 }]);
