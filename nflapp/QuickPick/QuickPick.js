@@ -75,7 +75,7 @@ angular.module('myApp.QuickPick', ['ngRoute', 'firebase'])
 		if(($scope.picks.length != 15) || !$scope.name){
 			alert('Please Enter your name and Add all 15 games!');
 		}
-		$scope.savedPicks = $firebaseObject(ref.child('week3').child($scope.name));
+		$scope.savedPicks = $firebaseObject(ref.child('week4').child($scope.name));
 		for (var i = 0; i < $scope.picks.length; i++) {
 			var pick = $scope.picks[i];
 			$scope.savedPicks[pick.points] = pick.winner;
