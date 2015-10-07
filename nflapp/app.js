@@ -25,5 +25,5 @@ config(['$routeProvider', function($routeProvider) {
 		controller:'addGameCtrl'
 		}
 	).
-   otherwise({redirectTo: '/WeeklyPicks/4'});
+   otherwise({redirectTo: '/QuickPick'});
 }]);
