@@ -19,7 +19,7 @@ angular.module('myApp.QuickPick', ['ngRoute', 'firebase'])
 	$scope.name = '';
 	// download the data into a local object
 	$scope.data = $firebaseObject(ref);
-	$scope.winners =5 [];
+	$scope.winners = [];
 	$scope.points = [99, 75, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3];
 	$scope.pointchoice = [];
 	$scope.picks = [];
