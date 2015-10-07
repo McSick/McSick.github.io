@@ -14,13 +14,13 @@ angular.module('myApp.QuickPick', ['ngRoute', 'firebase'])
 	var ref = new Firebase("https://nflquickpick.firebaseio.com");
 
 
-	$scope.games = $firebaseArray(ref.child('games').child('week4'));
-	$scope.copyofgames =$firebaseArray(ref.child('games').child('week4'));
+	$scope.games = $firebaseArray(ref.child('games').child('week5'));
+	$scope.copyofgames =$firebaseArray(ref.child('games').child('week5'));
 	$scope.name = '';
 	// download the data into a local object
 	$scope.data = $firebaseObject(ref);
-	$scope.winners = [];
-	$scope.points = [99, 75, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2];
+	$scope.winners =5 [];
+	$scope.points = [99, 75, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3];
 	$scope.pointchoice = [];
 	$scope.picks = [];
 	$scope.init = function () {
@@ -38,7 +38,7 @@ angular.module('myApp.QuickPick', ['ngRoute', 'firebase'])
 	$scope.savedPicks = [];
 	$scope.getPicks = function () {
 		$scope.picks = [];
-		var serverPicks = $firebaseObject(ref.child('week4').child($scope.name));
+		var serverPicks = $firebaseObject(ref.child('week5').child($scope.name));
 		serverPicks.$loaded(function (savedPicks) {
 
 			savedPicks.forEach(function (value, key) {
@@ -72,10 +72,10 @@ angular.module('myApp.QuickPick', ['ngRoute', 'firebase'])
 
 	}
 	$scope.submit = function () {
-		if(($scope.picks.length != 15) || !$scope.name){
-			alert('Please Enter your name and Add all 15 games!');
+		if(($scope.picks.length != 14) || !$scope.name){
+			alert('Please Enter your name and Add all 14 games!');
 		}
-		$scope.savedPicks = $firebaseObject(ref.child('week4').child($scope.name));
+		$scope.savedPicks = $firebaseObject(ref.child('week5').child($scope.name));
 		for (var i = 0; i < $scope.picks.length; i++) {
 			var pick = $scope.picks[i];
 			$scope.savedPicks[pick.points] = pick.winner;
