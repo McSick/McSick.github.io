@@ -14,7 +14,7 @@ angular.module('myApp.QuickPick', ['ngRoute', 'firebase'])
 	var ref = new Firebase("https://nflquickpick.firebaseio.com");
 
 
-	$scope.games = $firebaseArray(ref.child('games').child('week6'));
+	$scope.games = $firebaseArray(ref.child('games').child('week6')); 
 	$scope.copyofgames =$firebaseArray(ref.child('games').child('week6'));
 	$scope.name = '';
 	// download the data into a local object
