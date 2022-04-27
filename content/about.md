@@ -12,6 +12,7 @@ I also plan on occaisionally posting random thoughts about other topics as well.
 # About Me
 
 **Name**: Michael Sickles  
+**Email**:  <michel.c.sickles@gmail.com>  
 **Occupation**: Solutions Architect  
 **Location**: Ann Arbor, Michigan  
 **Degree**: Computer Engineering  
