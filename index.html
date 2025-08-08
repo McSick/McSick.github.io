@@ -266,6 +266,16 @@
       color: var(--ui-text);
       font-weight: 800;
     }
+
+    button,
+    .abilities button,
+    .dpad button,
+    .miniBtn,
+    .footerRow button {
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
   </style>
 </head>
 
@@ -332,6 +342,26 @@
       // Long-press tuning
       const LONG_PRESS_MS = 700;   // hold duration to trigger details
       const MOVE_TOLERANCE = 10;   // px of finger drift allowed
+
+      function victoryCheck(origin = '') {
+        // Only matters in combat rooms
+        if (!(State.roomType === 'BATTLE' || State.roomType === 'BOSS')) return false;
+        if (State.enemies.length > 0) return false;
+        if (State._lootShown) return true; // guard against double-open
+
+        State._lootShown = true;
+        const goldGain = (State.roomType === 'BOSS')
+          ? rand(60, 90) + 10 * (State.floor - 1)
+          : rand(15, 30) + 5 * (State.floor - 1);
+
+        State.gold += goldGain;
+        updateHUD();
+
+        // slight delay so the render can settle
+        setTimeout(() => openLootModal(), 50);
+        return true;
+      }
+
 
       const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
       const choice = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -990,6 +1020,8 @@ tiny_slug_anim_f3 480 376 16 16
       // ========= flow =========
       const RoomTypes = ['BATTLE', 'STORY', 'SHOP', 'HEAL', 'BOSS'];
       function nextRoom() {
+        State._lootShown = false;
+
         State.selection = null; State.turn = 'PLAYER'; State.extraActions = 0;
         const stage = STAGES[State.stage];
         const isBossNow = (State.stageFloor > stage.floors);
@@ -1146,32 +1178,32 @@ tiny_slug_anim_f3 480 376 16 16
           b.title = `${ab.name} — ${ab.desc}`;
           if (ab.cdLeft > 0) b.classList.add('cooldown');
 
-          // Click/tap selects the ability (no modal anywhere)
-          b.addEventListener('click', (ev) => {
+          // Select immediately on pointerdown (prevents DOM-swap/ghost-click issues)
+          b.addEventListener('pointerdown', (ev) => {
             ev.preventDefault();
-            selectAbility(idx);              // this will also set the HUD line
-            setAbilityInfoFromSelection();   // ensure HUD is in sync
+            selectAbility(idx);
+            setAbilityInfoFromSelection();
           }, { passive: false });
 
-          // Desktop hover shows details in HUD (never opens a modal)
+          // Kill any synthetic click that might still fire on some browsers
+          b.addEventListener('click', (e) => e.preventDefault(), { passive: false });
+
+          // Desktop hover → show details in HUD (never a modal)
           if (SUPPORTS_HOVER) {
             b.addEventListener('pointerenter', () => {
               abilityInfoEl.textContent = `${ab.name}: ${ab.desc}`;
             });
-            b.addEventListener('pointerleave', () => {
-              setAbilityInfoFromSelection();
-            });
-            b.addEventListener('pointercancel', () => {
-              setAbilityInfoFromSelection();
-            });
+            const reset = () => setAbilityInfoFromSelection();
+            b.addEventListener('pointerleave', reset);
+            b.addEventListener('pointercancel', reset);
           }
 
           abilitiesEl.appendChild(b);
         });
 
-        // keep HUD consistent after rerender
         setAbilityInfoFromSelection();
       }
+
 
       function showAbilityInfo(ab) { modalTitle.textContent = ab.name; modalContent.innerHTML = `<p style='color:${ab.color};font-weight:800'>${ab.rarity}</p><p>${ab.desc}</p>`; modalFooter.innerHTML = ''; const c = document.createElement('button'); c.textContent = 'Close'; c.onclick = hideModal; modalFooter.appendChild(c); showModal(); }
 
@@ -1181,17 +1213,17 @@ tiny_slug_anim_f3 480 376 16 16
         if (ab.type === 'tome') { const spend = Math.min(2, State.player.pages); if (spend > 0) { State.player.pages -= spend; State.pendingHits = (State.pendingHits || 0) + spend; addFloatText(State.player.x, State.player.y, `+${spend} hit`, '#d0c7ff', 45); SFX.beep('cast'); } ab.cdLeft = ab.cd; State.selection = null; updateHUD(); return; }
         if (ab.type === 'stealth') { addEffect(State.player, EFFECTS.STEALTH, 1 + (State.player.armorMods?.stealthPlus || 0)); addFloatText(State.player.x, State.player.y, 'STEALTH', '#9ad5ff', 45); SFX.beep('cast'); ab.cdLeft = ab.cd; State.selection = null; endPlayerTurn(); }
       }
-// Back-compat: enemyTurn expects { skip } from processEffects()
-// Use the new start-of-turn ticker + explicit FREEZE/STUN check.
-function processEffects(entity){
-  processStartEffects(entity); // applies DOTs and decrements debuffs
-  const skip = hasEffect(entity, EFFECTS.FREEZE) || hasEffect(entity, EFFECTS.STUN);
-  return { skip };
-}
+      // Back-compat: enemyTurn expects { skip } from processEffects()
+      // Use the new start-of-turn ticker + explicit FREEZE/STUN check.
+      function processEffects(entity) {
+        processStartEffects(entity); // applies DOTs and decrements debuffs
+        const skip = hasEffect(entity, EFFECTS.FREEZE) || hasEffect(entity, EFFECTS.STUN);
+        return { skip };
+      }
 
       // ========= turns =========
       function startPlayerTurn() {
-        processStartEffects(State.player);             // do ticks, but no skip decision
+        processStartEffects(State.player);
         if (victoryCheck('turnStart')) return;
 
         const frozen = hasEffect(State.player, EFFECTS.FREEZE);
@@ -1240,6 +1272,7 @@ function processEffects(entity){
           }
         }
         State.enemies = State.enemies.filter(e => e.hp > 0);
+        if (victoryCheck('enemyTurn')) return;
         updateHUD(); if (State.player.hp <= 0) { gameOver(); return; } State.turn = 'PLAYER'; startPlayerTurn();
       }
 
@@ -1253,7 +1286,7 @@ function processEffects(entity){
         if (State.selection) {
           const { ab } = State.selection; const dist = Math.abs(gx - State.player.x) + Math.abs(gy - State.player.y);
           if (ab.type === 'attack') {
-            if (dist <= ab.range) { const target = State.enemies.find(e => e.x === gx && e.y === gy); if (target) { resolveAttack(State.player, target, ab); if (State.enemies.length === 0) { const goldGain = rand(15, 30) + 5 * (State.floor - 1); State.gold += goldGain; updateHUD(); openLootModal(); return; } State.selection = null; endPlayerTurn(); SFX.beep('cast'); } }
+            if (dist <= ab.range) { const target = State.enemies.find(e => e.x === gx && e.y === gy); if (target) { resolveAttack(State.player, target, ab); if (victoryCheck('attack')) { return; } State.selection = null; endPlayerTurn(); SFX.beep('cast'); } }
           } else if (ab.type === 'heal') {
             if (gx === State.player.x && gy === State.player.y) { let amt = ab.heal; if (State.player.class === 'Cleric' && State.player.talents.Sanctify) amt = Math.round(amt * 1.2); State.player.hp = clamp(State.player.hp + amt, 0, State.player.maxHp); addFloatText(State.player.x, State.player.y, `+${amt}`, '#7cf59a', 50); if (State.player.class === 'Cleric' && CLASSES.Cleric.passiveOnHeal) CLASSES.Cleric.passiveOnHeal(amt); ab.cdLeft = ab.cd; State.selection = null; updateHUD(); endPlayerTurn(); SFX.beep('heal'); }
           } else if (ab.type === 'shield') {
@@ -1384,10 +1417,10 @@ function processEffects(entity){
       }
 
       function startRun() {
+        State._lootShown = false;
         State.gold = 0; State.floor = 1; State.stage = 0; State.stageFloor = 1; State.storyIndex = 0; Object.assign(State.player, { hp: 100, maxHp: 100, shields: 0, effects: [], pages: 0, armor: null, armorMods: {}, talents: {}, movingTicks: 0 }); State.pendingHits = 0; State.extraActions = 0; State._flurryUsed = false; renderAbilityButtons(); updateHUD(); openClassSelect(); addToast('A new run begins...', '#cde3ff', 120);
       }
 
-      setInterval(() => { renderAbilityButtons(); }, 300);
 
       // ========= self-tests =========
       function runSelfTests() {
