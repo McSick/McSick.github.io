@@ -26,11 +26,11 @@
     /* HUD */
     .hud {
       position: absolute; left: 0; right: 0; top: 0; padding: 8px 10px;
-      display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; pointer-events: none;
+      display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; pointer-events: none;
       background: linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0));
       font-weight: 600; text-shadow: 0 1px 2px #000;
     }
-    .leftStack{display:flex; gap:8px; align-items:center;}
+    .leftStack{display:flex; gap:8px; align-items:center; flex-wrap: wrap;}
     .hud .stat { pointer-events: auto; background: var(--ui-bg); padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.07); }
     .hud .hpBar { width: 140px; height: 12px; background: #2a2f44; border-radius: 999px; overflow: hidden; border: 1px solid #000; }
     .hud .hpFill { height: 100%; background: linear-gradient(90deg, #5fff9b, #2ee6ff); }
@@ -52,7 +52,7 @@
     .dpad .right { right: 0; top: 65px; }
 
     .abilities { pointer-events: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: min(60vw, 380px); }
-    .abilities button { height: 76px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15); background: var(--ui-bg); color: var(--ui-text); font-size: 13px; font-weight: 700; padding: 6px; text-align: left; }
+    .abilities button { height: 86px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15); background: var(--ui-bg); color: var(--ui-text); font-size: 13px; font-weight: 700; padding: 6px; text-align: left; }
     .abilities button.cooldown { opacity: 0.5; filter: grayscale(0.5); }
 
     .smallRow { display: flex; gap: 8px; align-items: center; }
@@ -61,7 +61,7 @@
     /* Modal */
     .modal { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(3,6,12,0.75); backdrop-filter: blur(6px); }
     .modal.show { display: flex; }
-    .card { width: min(92vw, 820px); max-height: 90vh; overflow: auto; background: #121528; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 14px; box-shadow: 0 10px 60px rgba(0,0,0,0.5); }
+    .card { width: min(92vw, 920px); max-height: 90vh; overflow: auto; background: #121528; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 14px; box-shadow: 0 10px 60px rgba(0,0,0,0.5); }
     .card h2 { margin: 8px 0 12px; }
     .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
     .choice { background: #0f1328; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px; }
@@ -80,7 +80,7 @@
     <!-- HUD -->
     <div class="hud">
       <div class="leftStack">
-        <div class="stat">Room: <span id="roomType">-</span></div>
+        <div class="stat">Room: <span id="roomType">-</span> <span id="roomTheme" style="opacity:.8"></span></div>
         <div class="stat smallRow">
           <span>HP</span>
           <div class="hpBar"><div id="hpFill" class="hpFill" style="width:100%"></div></div>
@@ -94,9 +94,13 @@
           <div class="progress"><div id="stageProg" class="progressFill" style="width:0%"></div></div>
           <span id="stageLabel" style="opacity:.8"></span>
         </div>
+        <div class="stat" id="abilityInfo" style="max-width:38vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.9">Tap an ability, then tap a tile. Long-press an ability for details.</div>
       </div>
       <div class="stat" style="pointer-events:auto">
         <button id="loadoutBtn" class="miniBtn">☰ Loadout</button>
+      </div>
+      <div class="stat" style="pointer-events:auto">
+        <button id="muteBtn" class="miniBtn" title="Toggle sound">🔊</button>
       </div>
       <div class="stat" style="pointer-events:auto">
         <button id="restartBtn" class="miniBtn">↻ Restart</button>
@@ -114,7 +118,7 @@
       <div class="abilities" id="abilities"></div>
     </div>
 
-    <!-- Modal for class select/loot/shop/story/heal/boss/loadout/gameover -->
+    <!-- Modal for class select/loot/shop/story/heal/boss/loadout/info -->
     <div class="modal" id="modal">
       <div class="card" id="modalCard">
         <h2 id="modalTitle">Loot!</h2>
@@ -144,17 +148,36 @@
   const gridOffsetX = Math.floor((canvas.width - GRID_W*TILE)/2);
   const gridOffsetY = Math.floor((canvas.height - GRID_H*TILE)/2);
 
-  // ===================== Sprites =====================
+  // ===================== Sprites (reliable Twemoji fallbacks) =====================
   const SPRITES = {
-    floor: 'https://raw.githubusercontent.com/kenneyNL/roguelikeDungeon_transparent/master/Spritesheet/roguelikeDungeon_transparent.png',
-    hero: 'https://raw.githubusercontent.com/kenneyNL/pixel-character-pack/master/PNG/Default/p1_stand.png',
-    slime: 'https://raw.githubusercontent.com/kenneyNL/tiny-dungeon/master/Tiles/tile_0018.png'
+    hero: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9d9.png',   // 🧙 mage
+    enemy: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f47e.png',  // 👾 monster
+    boss:  'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f479.png'   // 👹 ogre
   };
   const images = {};
   const loadImage = (key, src) => new Promise(res=>{ const img = new Image(); img.crossOrigin='anonymous'; img.onload=()=>{ images[key]=img; res(); }; img.onerror=()=>{ images[key]=null; res(); }; img.src=src; });
   Promise.all(Object.entries(SPRITES).map(([k,src])=>loadImage(k,src)));
 
-  // ===================== Effects, FX & Combos =====================
+  // ===================== Tiny SFX (WebAudio — no external files) =====================
+  const SFX = {
+    ctx:null, muted:false, vol:0.5,
+    _init(){ if(this.ctx) return; const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return; this.ctx = new AC(); },
+    mute(toggle){ this.muted = toggle!==undefined?!!toggle:!this.muted; document.getElementById('muteBtn').textContent = this.muted?'🔈':'🔊'; },
+    beep(type='ui'){
+      if(this.muted) return; this._init(); if(!this.ctx) return; const ctx=this.ctx; const now=ctx.currentTime;
+      const o=ctx.createOscillator(); const g=ctx.createGain(); o.connect(g); g.connect(ctx.destination);
+      const env=(a,d,s,r)=>{ g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(this.vol, now+a); g.gain.linearRampToValueAtTime(this.vol*s, now+a+d); g.gain.linearRampToValueAtTime(0.0001, now+a+d+r); };
+      if(type==='hit'){ o.type='square'; o.frequency.setValueAtTime(220, now); o.frequency.exponentialRampToValueAtTime(120, now+0.1); env(0.005,0.05,0.3,0.08); }
+      if(type==='cast'){ o.type='sawtooth'; o.frequency.setValueAtTime(440, now); o.frequency.exponentialRampToValueAtTime(660, now+0.12); env(0.005,0.08,0.2,0.1); }
+      if(type==='heal'){ o.type='triangle'; o.frequency.setValueAtTime(660, now); o.frequency.exponentialRampToValueAtTime(880, now+0.12); env(0.005,0.1,0.5,0.15); }
+      if(type==='loot'){ o.type='triangle'; o.frequency.setValueAtTime(880, now); o.frequency.exponentialRampToValueAtTime(1320, now+0.14); env(0.005,0.05,0.2,0.1); }
+      if(type==='boss'){ o.type='square'; o.frequency.setValueAtTime(160, now); o.frequency.exponentialRampToValueAtTime(120, now+0.25); env(0.005,0.12,0.2,0.25); }
+      if(type==='ui'){ o.type='sine'; o.frequency.setValueAtTime(520, now); env(0.005,0.03,0.2,0.05); }
+      o.start(now); o.stop(now+0.35);
+    }
+  };
+
+  // ===================== Effects & FX =====================
   const EFFECTS = { BURN:'Burn', FREEZE:'Freeze', SHOCK:'Shock', POISON:'Poison', BLEED:'Bleed', STUN:'Stun', STEALTH:'Stealth', HASTE:'Haste' };
 
   const FX = { floaters: [], hitFlash:0, shake:0, toasts:[], stealthPulse:0 };
@@ -166,82 +189,125 @@
   function addToast(text, color='#fff', time=120){ FX.toasts.push({text,color,time}); }
   function screenShake(str=6){ FX.shake = Math.max(FX.shake, str); }
 
-  function addEffect(entity, type, duration=1, power=0){
-    if(!entity.effects) entity.effects = [];
-    const e = entity.effects.find(e=>e.type===type);
-    if(e){ e.duration = Math.max(e.duration, duration); e.power = Math.max(e.power, power); }
-    else entity.effects.push({type, duration, power});
-  }
+  function addEffect(entity, type, duration=1, power=0){ if(!entity.effects) entity.effects=[]; const e=entity.effects.find(e=>e.type===type); if(e){ e.duration=Math.max(e.duration,duration); e.power=Math.max(e.power,power); } else entity.effects.push({type,duration,power}); }
   function hasEffect(entity, type){ return entity.effects && entity.effects.some(e=>e.type===type && e.duration>0); }
   function consumeEffect(entity, type){ if(!entity.effects) return; const i=entity.effects.findIndex(e=>e.type===type && e.duration>0); if(i>=0) entity.effects.splice(i,1); }
 
-  // Tick effects at the start of the subject's turn; return {skip}
   function processEffects(entity){
     if(!entity.effects) return {skip:false};
-    let skip=false; const out = [];
+    let skip=false; const out=[];
     for(const eff of entity.effects){
       switch(eff.type){
-        case EFFECTS.BURN:
-          entity.hp -= eff.power||4; eff.duration--; addFloatText(entity.x, entity.y, `-${eff.power||4}🔥`, '#ffb0a0', 40); break;
-        case EFFECTS.POISON:
-          entity.hp -= eff.power||5; eff.duration--; addFloatText(entity.x, entity.y, `-${eff.power||5}☠`, '#9cff9c', 40); break;
-        case EFFECTS.SHOCK:
-          eff.duration--; break;
-        case EFFECTS.FREEZE:
-          eff.duration--; skip = true; break;
-        case EFFECTS.STUN:
-          eff.duration--; skip = true; break;
-        case EFFECTS.STEALTH:
-          eff.duration--; break;
-        case EFFECTS.HASTE:
-          eff.duration--; break;
+        case EFFECTS.BURN:   entity.hp -= eff.power||4; eff.duration--; addFloatText(entity.x, entity.y, `-${eff.power||4}🔥`, '#ffb0a0', 40); break;
+        case EFFECTS.POISON: entity.hp -= eff.power||5; eff.duration--; addFloatText(entity.x, entity.y, `-${eff.power||5}☠`, '#9cff9c', 40); break;
+        case EFFECTS.SHOCK:  eff.duration--; break;
+        case EFFECTS.FREEZE: eff.duration--; skip=true; break;
+        case EFFECTS.STUN:   eff.duration--; skip=true; break;
+        case EFFECTS.STEALTH:eff.duration--; break;
+        case EFFECTS.HASTE:  eff.duration--; break;
       }
       if(eff.duration>0) out.push(eff);
     }
-    entity.effects = out;
-    return {skip};
+    entity.effects = out; return {skip};
   }
 
-  // Combo helpers executed on hit
   function onHitCombos(attacker, target, baseDamage, meta){
     let dmg = baseDamage;
-    // Shatter
     if(hasEffect(target, EFFECTS.FREEZE)){
-      dmg = Math.round(dmg * 1.5); consumeEffect(target, EFFECTS.FREEZE);
+      dmg = Math.round(dmg*1.5); consumeEffect(target, EFFECTS.FREEZE);
       if(Math.random()<0.25) addEffect(target, EFFECTS.STUN, 1);
       addFloatText(target.x, target.y, 'SHATTER!', '#bde0ff', 40);
     }
-    // Overload
     if(meta.element==='Shock' && hasEffect(target, EFFECTS.BURN)){
       splashDamage(target.x, target.y, 10); addFloatText(target.x, target.y, 'OVERLOAD', '#ffe477', 40);
     }
-    // Backstab
     if(hasEffect(attacker, EFFECTS.STEALTH)){
-      dmg = Math.round(dmg * 1.5);
+      dmg = Math.round(dmg*1.5);
       if(State.player===attacker){ State.player.pages++; }
       consumeEffect(attacker, EFFECTS.STEALTH);
       State.extraActions++; addFloatText(attacker.x, attacker.y, 'BACKSTAB!', '#d6b8ff', 45);
     }
     return dmg;
   }
-
-  function splashDamage(cx, cy, amount){
-    for(const e of State.enemies){ if(Math.abs(e.x-cx)+Math.abs(e.y-cy)===1){ e.hp -= amount; addFloatText(e.x, e.y, `-${amount}`, '#ffd18a', 40); } }
-  }
+  function splashDamage(cx, cy, amount){ for(const e of State.enemies){ if(Math.abs(e.x-cx)+Math.abs(e.y-cy)===1){ e.hp -= amount; addFloatText(e.x, e.y, `-${amount}`, '#ffd18a', 40); } } }
 
   // ===================== Story / Stages =====================
   const STAGES = [
-    {
-      name: 'Crypt of Cinders', floors: 4,
-      story: [
+    { name:'Crypt of Cinders', floors:4,
+      story:[
         'You descend into the ember-lit crypt. Ash whispers of a stolen flame.',
         'Charred runes hint at a Warden siphoning life from below.',
         'A survivor speaks: “Break the Warden’s brazier and the dead will rest.”',
         'The air glows. The brazier is near. Prepare yourself.'
       ],
-      boss: { name:'Ember Warden', theme:'Flaming', hp: 220, dmg: 18 }
+      boss:{ name:'Ember Warden', theme:'Flaming', hp:220, dmg:18 }
     }
   ];
+
+  // ===================== Tiles / Room Generation =====================
+  const TILES = { FLOOR:0, WALL:1, LAVA:2, BUSH:3, BOOK:4, HEAL:5, SPIKES:6 };
+  const THEMES = [
+    { key:'Ember Vault', tiles:[TILES.LAVA,TILES.SPIKES], wallDensity:0.08 },
+    { key:'Library', tiles:[TILES.BOOK], wallDensity:0.10 },
+    { key:'Overgrown Crypt', tiles:[TILES.BUSH], wallDensity:0.10 },
+    { key:'Sanctum', tiles:[TILES.HEAL], wallDensity:0.06 },
+    { key:'Catacombs', tiles:[], wallDensity:0.14 }
+  ];
+  // ✅ Initialize to a full FLOOR grid so early renders can't crash
+  const Map = { tiles:Array.from({length:GRID_H},()=>Array.from({length:GRID_W},()=>TILES.FLOOR)), theme:'Catacombs' };
+  function inBounds(x,y){ return x>=0&&y>=0&&x<GRID_W&&y<GRID_H; }
+  // ✅ Safe tile accessor even if rows are missing
+  function tileAt(x,y){
+    if(!inBounds(x,y)) return TILES.WALL;
+    const row = Map.tiles[y];
+    if(!row) return TILES.FLOOR;
+    const t = row[x];
+    return (t===undefined ? TILES.FLOOR : t);
+  }
+  function blocked(x,y){ const t = tileAt(x,y); return t===TILES.WALL; }
+  function hazardous(x,y){ const t=tileAt(x,y); return (t===TILES.LAVA||t===TILES.SPIKES); }
+  function aiPassable(x,y){ if(!inBounds(x,y)) return false; if(blocked(x,y)) return false; return true; }
+
+  function genRoom(){
+    Map.tiles = Array.from({length:GRID_H},()=>Array.from({length:GRID_W},()=>TILES.FLOOR));
+    const theme = choice(THEMES); Map.theme = theme.key;
+    // scatter walls
+    for(let i=0;i<Math.floor(GRID_W*GRID_H*theme.wallDensity);i++){
+      const x=rand(0,GRID_W-1), y=rand(0,GRID_H-1); Map.tiles[y][x]=TILES.WALL;
+    }
+    // add a motif
+    const motif = choice(['pillars','cross','ring','lanes']);
+    if(motif==='pillars'){
+      for(let y=1;y<GRID_H;y+=2) for(let x=1;x<GRID_W;x+=2) if(Math.random()<0.5) Map.tiles[y][x]=TILES.WALL;
+    } else if(motif==='cross'){
+      for(let x=2;x<GRID_W-2;x++) Map.tiles[Math.floor(GRID_H/2)][x]=TILES.WALL;
+      for(let y=1;y<GRID_H-1;y++) Map.tiles[y][Math.floor(GRID_W/2)] = TILES.WALL;
+    } else if(motif==='ring'){
+      for(let x=1;x<GRID_W-1;x++){ Map.tiles[1][x]=TILES.WALL; Map.tiles[GRID_H-2][x]=TILES.WALL; }
+      for(let y=1;y<GRID_H-1;y++){ Map.tiles[y][1]=TILES.WALL; Map.tiles[y][GRID_W-2]=TILES.WALL; }
+    } else if(motif==='lanes'){
+      for(let y=0;y<GRID_H;y++) if(y%2===0) for(let x=0;x<GRID_W;x++) if(Math.random()<0.25) Map.tiles[y][x]=TILES.WALL;
+    }
+    // sprinkle theme-specific tiles in empty spots
+    const empties = [];
+    for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++) if(Map.tiles[y][x]===TILES.FLOOR) empties.push([x,y]);
+    empties.sort(()=>Math.random()-0.5);
+    const count = Math.min(6, Math.floor(empties.length*0.12));
+    for(let i=0;i<count;i++){ const [x,y]=empties[i]; const t = choice(theme.tiles); if(t!==undefined) Map.tiles[y][x]=t; }
+
+    // make sure spawns are clear
+    Map.tiles[Math.floor(GRID_H/2)][1] = TILES.FLOOR; // player spawn
+    Map.tiles[Math.floor(GRID_H/2)][GRID_W-2] = TILES.FLOOR; // enemy lane
+  }
+
+  function applyTileOnEnter(entity){
+    const t = tileAt(entity.x, entity.y);
+    if(t===TILES.BUSH){ addEffect(entity, EFFECTS.STEALTH, 1); addFloatText(entity.x, entity.y, 'Hiding', '#9ad5ff', 40); }
+    if(t===TILES.BOOK && entity===State.player){ State.player.pages++; addFloatText(entity.x, entity.y, '+Page', '#c8b8ff', 40); SFX.beep('loot'); }
+    if(t===TILES.HEAL){ const amt=5; entity.hp = clamp(entity.hp+amt,0,entity.maxHp||entity.hp+amt); addFloatText(entity.x, entity.y, `+${amt}`, '#7cf59a', 40); }
+    if(t===TILES.LAVA){ addEffect(entity, EFFECTS.BURN, 2, 4); }
+    if(t===TILES.SPIKES){ entity.hp -= 4; addFloatText(entity.x, entity.y, '-4', '#f5b5b5', 40); }
+  }
 
   // ===================== Game State =====================
   const State = {
@@ -295,7 +361,6 @@
       ]
     }
   };
-
   function cleanseOne(entity){ if(!entity.effects) return; const bad=[EFFECTS.BURN,EFFECTS.POISON,EFFECTS.BLEED,EFFECTS.SHOCK,EFFECTS.FREEZE,EFFECTS.STUN]; const i=entity.effects.findIndex(e=>bad.includes(e.type)); if(i>=0) entity.effects.splice(i,1); }
 
   // ===================== Ability Factory =====================
@@ -314,48 +379,27 @@
     {key:'Heal', type:'heal'}, {key:'Shield', type:'shield'}, {key:'Blink', type:'move'}, {key:'Hide', type:'stealth'},
     {key:'Tome', type:'tome'}
   ];
-
   function makeAbility(){
-    const rar = weightedPick();
-    const pre = choice(PREFIX);
-    const ele = choice(ELEMENT);
-    const base = choice(BASE);
-    const mult = rar.mult;
-
+    const rar = weightedPick(); const pre = choice(PREFIX); const ele = choice(ELEMENT); const base = choice(BASE); const mult = rar.mult;
     let dmg=0, heal=0, shield=0, range=1, cd=0, desc='', hits=1, type=base.type, element=null;
-
     if(type==='attack'){
-      dmg = Math.round(choice([7,9,11,13,15])*mult);
-      range = choice([1,2,3]);
-      cd = choice([0,1,2]);
-      hits = Math.random()<0.15?2:1;
-      element = ele||null;
-      desc = `Deal ${dmg}${hits>1?` x${hits}`:''} at range ${range}${element?` (${element})`:''}.`;
+      dmg = Math.round(choice([7,9,11,13,15])*mult); range = choice([1,2,3]); cd = choice([0,1,2]); hits = Math.random()<0.15?2:1; element = ele||null; desc = `Deal ${dmg}${hits>1?` x${hits}`:''} at range ${range}${element?` (${element})`:''}.`;
     } else if(type==='heal'){
-      heal = Math.round(choice([10,14,18,22])*mult);
-      cd = choice([1,2]);
-      desc = `Restore ${heal} HP. (Cleric: Shield & cleanse)`;
+      heal = Math.round(choice([10,14,18,22])*mult); cd = choice([1,2]); desc = `Restore ${heal} HP. (Cleric: Shield & cleanse)`;
     } else if(type==='shield'){
-      shield = Math.round(choice([8,12,16,20])*mult);
-      cd = choice([2,3]);
-      desc = `Gain ${shield} Shield for 1 room.`;
+      shield = Math.round(choice([8,12,16,20])*mult); cd = choice([2,3]); desc = `Gain ${shield} Shield for 1 room.`;
     } else if(type==='move'){
-      range = choice([2,3]);
-      cd = choice([1,2]);
-      desc = `Teleport within ${range} tiles.`;
+      range = choice([2,3]); cd = choice([1,2]); desc = `Teleport within ${range} tiles.`;
     } else if(type==='stealth'){
       cd = 2; range = 0; desc = `Enter Stealth for 1 turn.`;
     } else if(type==='tome'){
       cd = 1; range = 0; desc = `Spend up to 2 Pages: +1 hit to next attack per Page.`;
     }
-
     const name = [pre, ele, base.key].filter(Boolean).join(' ');
     const ab = { name, rarity: rar.key, color: rar.color, type, dmg, heal, shield, range, cd, cdLeft: 0, desc, hits, element };
-    const c = State.player.class && CLASSES[State.player.class];
-    if(c && c.onMakeAbility) c.onMakeAbility(ab);
+    const c = State.player.class && CLASSES[State.player.class]; if(c && c.onMakeAbility) c.onMakeAbility(ab);
     return ab;
   }
-
   function newAbilitySet(){ const arr=[]; while(arr.length<4) arr.push(makeAbility()); return arr; }
 
   // ===================== Armor =====================
@@ -366,55 +410,68 @@
     {name:'Pyromancer Robe', desc:'Burn ticks +2.', apply:(p)=>{ p.armorMods={burnPlus:2}; }},
     {name:"Knight's Bulwark", desc:'Start battle with +15 Shield.', apply:(p)=>{ p.armorMods={startShield:15}; }}
   ];
-
-  function equipArmor(armor){ State.player.armor = armor; armor.apply(State.player); updateHUD(); addToast(`Equipped: ${armor.name}`, '#ffd6a6'); }
+  function equipArmor(armor){ State.player.armor = armor; armor.apply(State.player); updateHUD(); addToast(`Equipped: ${armor.name}`, '#ffd6a6'); SFX.beep('ui'); }
 
   // ===================== Enemies =====================
   function spawnEnemies(){
-    const count = clamp(1 + Math.floor(State.floor/2), 1, 4);
-    const enemies = [];
-    for(let i=0;i<count;i++){
-      enemies.push({ x: GRID_W-2-i, y: GRID_H-2, hp: 30 + 12*State.floor, dmg: 8 + 2*State.floor, effects:[] });
-    }
+    const count = clamp(1 + Math.floor(State.floor/2), 1, 4); const enemies = [];
+    let placed=0; while(placed<count){ const x=GRID_W-2-rand(0,2); const y=rand(1,GRID_H-2); if(!blocked(x,y)){ enemies.push({ x, y, hp: 30 + 12*State.floor, dmg: 8 + 2*State.floor, effects:[] }); placed++; } }
     return enemies;
   }
-  function spawnBoss(){
-    const stage = STAGES[State.stage];
-    const b = stage.boss;
-    const boss = { x: GRID_W-3, y: Math.floor(GRID_H/2), hp: b.hp, dmg: b.dmg, effects:[], isBoss:true, name:b.name, theme:b.theme };
-    return [boss];
+  function spawnBoss(){ const stage = STAGES[State.stage]; const b = stage.boss; const pos={x:GRID_W-3, y:Math.floor(GRID_H/2)}; if(blocked(pos.x,pos.y)){ pos.x=GRID_W-2; pos.y=1; }
+    const boss = { ...pos, hp:b.hp, dmg:b.dmg, effects:[], isBoss:true, name:b.name, theme:b.theme }; return [boss]; }
+
+  // Pathfinding (BFS)
+  const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+  function nextStepTowards(e, tx, ty){
+    if(Math.abs(e.x-tx)+Math.abs(e.y-ty)===1) return {x:e.x, y:e.y};
+    const q=[], prev=Array.from({length:GRID_H},()=>Array.from({length:GRID_W},()=>null));
+    q.push([e.x,e.y]); prev[e.y][e.x] = [e.x,e.y];
+    while(q.length){
+      const [cx,cy]=q.shift();
+      for(const [dx,dy] of DIRS){
+        const nx=cx+dx, ny=cy+dy; if(!inBounds(nx,ny)) continue; if(prev[ny][nx]) continue; if(!aiPassable(nx,ny)) continue;
+        if(State.enemies.some(o=>o!==e && o.x===nx && o.y===ny)) continue;
+        if(hazardous(nx,ny)) continue;
+        prev[ny][nx]=[cx,cy];
+        if(nx===tx && ny===ty){
+          let px=nx, py=ny, qx=cx, qy=cy;
+          while(prev[qy][qx] && !(prev[qy][qx][0]===e.x && prev[qy][qx][1]===e.y)){ const p=prev[qy][qx]; qx=p[0]; qy=p[1]; }
+          return {x:qx, y:qy};
+        }
+        q.push([nx,ny]);
+      }
+    }
+    let best={x:e.x,y:e.y,score:9999};
+    for(const [dx,dy] of DIRS){ const nx=e.x+dx, ny=e.y+dy; if(!aiPassable(nx,ny)) continue; if(State.enemies.some(o=>o!==e&&o.x===nx&&o.y===ny)) continue; let s=Math.abs(nx-tx)+Math.abs(ny-ty); if(hazardous(nx,ny)) s+=3; if(s<best.score){ best={x:nx,y:ny,score:s}; } }
+    return {x:best.x, y:best.y};
   }
 
   // ===================== Room Flow =====================
   const RoomTypes = ['BATTLE','STORY','SHOP','HEAL','BOSS'];
   function nextRoom(){
     State.selection = null; State.turn='PLAYER'; State.extraActions=0;
-
     const stage = STAGES[State.stage];
     const isBossNow = (State.stageFloor>stage.floors);
-    if(isBossNow){
-      State.roomType = 'BOSS'; State.enemies = spawnBoss();
-      addToast(`Boss: ${stage.boss.name}`, 'var(--boss)', 180);
-    } else {
+    if(isBossNow){ State.roomType = 'BOSS'; genRoom(); State.player.x=1; State.player.y=Math.floor(GRID_H/2); State.enemies = spawnBoss(); addToast(`Boss: ${stage.boss.name}`, '#ff7ad6', 180); SFX.beep('boss'); }
+    else {
       const weights = {BATTLE: 55, STORY: 15, SHOP: 15, HEAL: 15};
       const pool = []; for(const k of ['BATTLE','STORY','SHOP','HEAL']) for(let i=0;i<weights[k];i++) pool.push(k);
       State.roomType = choice(pool);
-      if(State.roomType==='BATTLE'){ State.player.x=1; State.player.y=Math.floor(GRID_H/2); State.enemies=spawnEnemies(); }
-      else { State.enemies=[]; openRoomModal(); }
+      if(State.roomType==='BATTLE'){ genRoom(); State.player.x=1; State.player.y=Math.floor(GRID_H/2); State.enemies=spawnEnemies(); }
+      else { State.enemies=[]; genRoom(); openRoomModal(); }
     }
-
-    // Armor/talents battle-start passives
     if(State.roomType==='BATTLE' || State.roomType==='BOSS'){
       if(State.player.armorMods && State.player.armorMods.startShield) State.player.shields += State.player.armorMods.startShield;
       if(State.player.class==='Cleric' && State.player.talents.Aegis) State.player.shields += 10;
     }
-
     updateHUD();
   }
 
   function updateHUD(){
     const stage = STAGES[State.stage];
     document.getElementById('roomType').textContent = State.roomType + ` (F${State.floor})`;
+    document.getElementById('roomTheme').textContent = (State.roomType==='BATTLE'||State.roomType==='BOSS')?`• ${Map.theme}`:'';
     document.getElementById('gold').textContent = State.gold;
     document.getElementById('clazz').textContent = State.player.class;
     document.getElementById('pages').textContent = State.player.pages;
@@ -439,23 +496,20 @@
     const wrap = document.createElement('div');
     const section = (title, el)=>{ const h=document.createElement('h3'); h.textContent=title; wrap.appendChild(h); wrap.appendChild(el); };
 
-    // Class
     const c = document.createElement('div'); c.className='choice';
     c.innerHTML = `<div class="title">Class</div><div class="row">${State.player.class} — ${CLASSES[State.player.class]?.desc||''}</div>`;
-    // Armor
     const a = document.createElement('div'); a.className='choice';
     a.innerHTML = `<div class="title">Armor</div><div class="row">${State.player.armor?`<b>${State.player.armor.name}</b> — ${State.player.armor.desc}`:'None'}</div>`;
-    // Talents
     const tWrap = document.createElement('div'); tWrap.className='choices';
     const learned = Object.entries(State.player.talents).filter(([k,v])=>v);
     if(learned.length===0){ const d=document.createElement('div'); d.className='choice'; d.innerHTML='<div class="row">No talents learned yet.</div>'; tWrap.appendChild(d); }
-    else {
-      learned.forEach(([key])=>{
-        const def = CLASSES[State.player.class]?.talents.find(t=>t.key===key);
-        const d=document.createElement('div'); d.className='choice'; d.innerHTML=`<div class='title'>${def?.label||key}</div>`; tWrap.appendChild(d);
-      });
-    }
-    section('Class', c); section('Armor', a); section('Talents', tWrap);
+    else learned.forEach(([key])=>{ const def = CLASSES[State.player.class]?.talents.find(t=>t.key===key); const d=document.createElement('div'); d.className='choice'; d.innerHTML=`<div class='title'>${def?.label||key}</div>`; tWrap.appendChild(d); });
+
+    // Glossary
+    const g=document.createElement('div'); g.className='choice'; g.innerHTML = `<div class='title'>Glossary</div>
+      <div class='row'>🔥 Burn: damage each turn • ❄ Freeze: skip next action • ⚡ Shock: setup Overload • ☠ Poison: damage each turn • 🩸 Bleed: damage on move • 🛡 Shield: absorbs damage • Page: empowers Tome</div>`;
+
+    section('Class', c); section('Armor', a); section('Talents', tWrap); section('Legend', g);
     modalContent.appendChild(wrap);
     const close = document.createElement('button'); close.textContent='Close'; close.onclick=()=>hideModal(); modalFooter.appendChild(close);
     showModal();
@@ -465,15 +519,13 @@
     modalTitle.textContent = State.roomType; modalContent.innerHTML=''; modalFooter.innerHTML='';
 
     if(State.roomType==='STORY'){
-      const stage = STAGES[State.stage];
-      const line = stage.story[Math.min(State.storyIndex, stage.story.length-1)];
+      const stage = STAGES[State.stage]; const line = stage.story[Math.min(State.storyIndex, stage.story.length-1)];
       modalContent.innerHTML = `<p>${line}</p>`;
-      const cont = document.createElement('button'); cont.textContent = 'Continue'; cont.onclick=()=>{ State.storyIndex++; hideModal(); nextRoom(); };
+      const cont = document.createElement('button'); cont.textContent = 'Continue'; cont.onclick=()=>{ State.storyIndex++; hideModal(); nextRoom(); SFX.beep('ui'); };
       modalFooter.appendChild(cont); showModal();
     }
     else if(State.roomType==='SHOP'){
-      const offers = [makeAbility(), makeAbility(), makeAbility()];
-      const prices = offers.map(()=> rand(25,50));
+      const offers = [makeAbility(), makeAbility(), makeAbility()]; const prices = offers.map(()=> rand(25,50));
       const wrap = document.createElement('div'); wrap.className='choices';
       offers.forEach((ab,i)=>{
         const div = document.createElement('div'); div.className='choice';
@@ -481,25 +533,21 @@
           <div class="row"><span>${ab.desc}</span></div>
           <div class="row"><span class="pill">CD ${ab.cd}</span><span class="pill">Range ${ab.range||1}</span>${ab.hits>1?`<span class="pill">Hits ${ab.hits}</span>`:''}</div>
           <div class="row" style="margin-top:6px">Price: <b class="gold">${prices[i]}g</b></div>`;
-        const buy = document.createElement('button'); buy.textContent='Buy & replace...'; buy.onclick=()=> replaceAbilityFlow(ab, prices[i]);
-        div.appendChild(buy); wrap.appendChild(div);
+        const buy = document.createElement('button'); buy.textContent='Buy & replace...'; buy.onclick=()=> replaceAbilityFlow(ab, prices[i]); div.appendChild(buy); wrap.appendChild(div);
       });
-      // Armor
-      const armor = choice(ARMOR_POOL);
-      const armorDiv = document.createElement('div'); armorDiv.className='choice';
+      const armor = choice(ARMOR_POOL); const armorDiv = document.createElement('div'); armorDiv.className='choice';
       armorDiv.innerHTML = `<div class="title">${armor.name}</div><div class="row">${armor.desc}</div><div class='row' style='margin-top:6px'>Price: <b class='gold'>60g</b></div>`;
       const buyA = document.createElement('button'); buyA.textContent='Buy armor'; buyA.onclick=()=>{ if(State.gold<60){ buyA.textContent='Not enough gold'; return; } State.gold-=60; equipArmor(armor); updateHUD(); hideModal(); nextRoom(); };
       armorDiv.appendChild(buyA); wrap.appendChild(armorDiv);
-
       modalContent.appendChild(wrap);
-      const skip = document.createElement('button'); skip.textContent='Leave shop'; skip.onclick=()=>{ hideModal(); nextRoom(); };
+      const skip = document.createElement('button'); skip.textContent='Leave shop'; skip.onclick=()=>{ hideModal(); nextRoom(); SFX.beep('ui'); };
       modalFooter.appendChild(skip); showModal();
     }
     else if(State.roomType==='HEAL'){
       const amt = Math.round(State.player.maxHp*0.4);
       modalContent.innerHTML = `<p>You discover a tranquil fountain. Restore <b>${amt} HP</b>?</p>`;
-      const yes = document.createElement('button'); yes.textContent='Drink'; yes.onclick=()=>{ State.player.hp = clamp(State.player.hp+amt,0,State.player.maxHp); updateHUD(); hideModal(); nextRoom(); };
-      const no = document.createElement('button'); no.textContent='Move on'; no.onclick=()=>{ hideModal(); nextRoom(); };
+      const yes = document.createElement('button'); yes.textContent='Drink'; yes.onclick=()=>{ State.player.hp = clamp(State.player.hp+amt,0,State.player.maxHp); updateHUD(); hideModal(); nextRoom(); SFX.beep('heal'); };
+      const no = document.createElement('button'); no.textContent='Move on'; no.onclick=()=>{ hideModal(); nextRoom(); SFX.beep('ui'); };
       modalFooter.appendChild(yes); modalFooter.appendChild(no); showModal();
     }
   }
@@ -512,7 +560,7 @@
         <div class="row"><span style="color:${cur.color}">${cur.name}</span></div>
         <div class="row"><span>${cur.desc}</span></div>`;
       const btn = document.createElement('button'); btn.textContent = price?`Replace with ${newAb.name} (${price}g)`:`Replace with ${newAb.name}`;
-      btn.onclick=()=>{ if(price && State.gold<price){ btn.textContent='Not enough gold'; return; } if(price) State.gold -= price; State.player.abilities[i] = newAb; renderAbilityButtons(); updateHUD(); hideModal(); nextRoom(); };
+      btn.onclick=()=>{ if(price && State.gold<price){ btn.textContent='Not enough gold'; return; } if(price) State.gold -= price; State.player.abilities[i] = newAb; renderAbilityButtons(); updateHUD(); hideModal(); nextRoom(); SFX.beep('ui'); };
       div.appendChild(btn); grid.appendChild(div);
     });
     modalContent.innerHTML=''; modalContent.appendChild(grid);
@@ -521,94 +569,33 @@
   function openLootModal(){
     modalTitle.textContent = State.roomType==='BOSS' ? 'Boss Defeated! Choose rewards' : 'Victory! Choose rewards';
     modalContent.innerHTML=''; modalFooter.innerHTML='';
-
     const root = document.createElement('div');
-
-    // Ability picks
-    const loot = [makeAbility(), makeAbility(), makeAbility()];
-    const abWrap = document.createElement('div'); abWrap.className='choices';
-    loot.forEach(ab=>{
-      const div = document.createElement('div'); div.className='choice';
-      div.innerHTML = `<div class="title" style="color:${ab.color}">${ab.name} <span class="pill">${ab.rarity}</span></div>
+    const loot = [makeAbility(), makeAbility(), makeAbility()]; const abWrap = document.createElement('div'); abWrap.className='choices';
+    loot.forEach(ab=>{ const div=document.createElement('div'); div.className='choice'; div.innerHTML = `<div class="title" style="color:${ab.color}">${ab.name} <span class="pill">${ab.rarity}</span></div>
         <div class="row"><span>${ab.desc}</span></div>
-        <div class="row"><span class="pill">CD ${ab.cd}</span><span class="pill">Range ${ab.range||1}</span>${ab.hits>1?`<span class="pill">Hits ${ab.hits}</span>`:''}</div>`;
-      const btn = document.createElement('button'); btn.textContent='Take & replace...'; btn.onclick=()=> { replaceAbilityFlow(ab, 0); };
-      div.appendChild(btn); abWrap.appendChild(div);
-    });
+        <div class="row"><span class="pill">CD ${ab.cd}</span><span class="pill">Range ${ab.range||1}</span>${ab.hits>1?`<span class="pill">Hits ${ab.hits}</span>`:''}</div>`; const btn=document.createElement('button'); btn.textContent='Take & replace...'; btn.onclick=()=> { replaceAbilityFlow(ab, 0); SFX.beep('loot'); }; div.appendChild(btn); abWrap.appendChild(div); });
+    root.appendChild(document.createElement('h3')).textContent='Abilities'; root.appendChild(abWrap);
 
-    root.appendChild(document.createElement('h3')).textContent='Abilities';
-    root.appendChild(abWrap);
-
-    // Bonus: Armor or Talent
     const roll = Math.random();
-    if(roll<0.5){
-      const picks = [choice(ARMOR_POOL), choice(ARMOR_POOL)];
-      const aw = document.createElement('div'); aw.className='choices';
-      picks.forEach(arm=>{
-        const d = document.createElement('div'); d.className='choice';
-        d.innerHTML=`<div class='title'>${arm.name}</div><div class='row'>${arm.desc}</div>`;
-        const b=document.createElement('button'); b.textContent='Equip'; b.onclick=()=>{ equipArmor(arm); hideModal(); afterRewards(); };
-        d.appendChild(b); aw.appendChild(d);
-      });
-      root.appendChild(document.createElement('h3')).textContent='Bonus: Armor';
-      root.appendChild(aw);
-    } else {
-      const clazz = CLASSES[State.player.class];
-      if(clazz){
-        const pool = [...clazz.talents];
-        const picks = [pool.splice(rand(0,pool.length-1),1)[0], pool.splice(rand(0,Math.max(0,pool.length-1)),1)[0]].filter(Boolean);
-        if(picks.length){
-          const tw = document.createElement('div'); tw.className='choices';
-          picks.forEach(t=>{
-            const d=document.createElement('div'); d.className='choice'; d.innerHTML=`<div class='title'>${t.label}</div>`;
-            const b=document.createElement('button'); b.textContent='Learn'; b.onclick=()=>{ t.apply(State.player); hideModal(); afterRewards(); };
-            d.appendChild(b); tw.appendChild(d);
-          });
-          root.appendChild(document.createElement('h3')).textContent='Bonus: Talent';
-          root.appendChild(tw);
-        }
-      }
-    }
+    if(roll<0.5){ const picks=[choice(ARMOR_POOL), choice(ARMOR_POOL)]; const aw=document.createElement('div'); aw.className='choices'; picks.forEach(arm=>{ const d=document.createElement('div'); d.className='choice'; d.innerHTML=`<div class='title'>${arm.name}</div><div class='row'>${arm.desc}</div>`; const b=document.createElement('button'); b.textContent='Equip'; b.onclick=()=>{ equipArmor(arm); hideModal(); afterRewards(); }; d.appendChild(b); aw.appendChild(d); }); root.appendChild(document.createElement('h3')).textContent='Bonus: Armor'; root.appendChild(aw); }
+    else { const clazz=CLASSES[State.player.class]; if(clazz){ const pool=[...clazz.talents]; const picks=[pool.splice(rand(0,pool.length-1),1)[0], pool.splice(rand(0,Math.max(0,pool.length-1)),1)[0]].filter(Boolean); if(picks.length){ const tw=document.createElement('div'); tw.className='choices'; picks.forEach(t=>{ const d=document.createElement('div'); d.className='choice'; d.innerHTML=`<div class='title'>${t.label}</div>`; const b=document.createElement('button'); b.textContent='Learn'; b.onclick=()=>{ t.apply(State.player); hideModal(); afterRewards(); }; d.appendChild(b); tw.appendChild(d); }); root.appendChild(document.createElement('h3')).textContent='Bonus: Talent'; root.appendChild(tw); } } }
 
     modalContent.appendChild(root);
-
     const skip = document.createElement('button'); skip.textContent='Skip (keep current)'; skip.onclick=()=>{ hideModal(); afterRewards(); };
-    modalFooter.appendChild(skip);
-    showModal();
+    modalFooter.appendChild(skip); showModal();
   }
 
-  function afterRewards(){
-    const wasBoss = (State.roomType==='BOSS');
-    if(wasBoss){
-      // Run ends for this stage
-      modalTitle.textContent='Run Cleared!';
-      modalContent.innerHTML = `<p>You extinguished the <b>${STAGES[State.stage].boss.name}</b> and calmed the <b>${STAGES[State.stage].name}</b>.</p>
-        <p>Floor reached: <b>${State.floor}</b> • Gold: <span class='gold'><b>${State.gold}</b></span></p>`;
-      modalFooter.innerHTML='';
-      const btn = document.createElement('button'); btn.textContent='Start a new run'; btn.onclick=()=>{ startRun(); hideModal(); };
-      modalFooter.appendChild(btn); showModal();
-      return;
-    }
-    State.floor++; State.stageFloor++; nextRoom();
-  }
+  function afterRewards(){ const wasBoss = (State.roomType==='BOSS'); if(wasBoss){ modalTitle.textContent='Run Cleared!'; modalContent.innerHTML = `<p>You extinguished the <b>${STAGES[State.stage].boss.name}</b> and calmed the <b>${STAGES[State.stage].name}</b>.</p>
+        <p>Floor reached: <b>${State.floor}</b> • Gold: <span class='gold'><b>${State.gold}</b></span></p>`; modalFooter.innerHTML=''; const btn=document.createElement('button'); btn.textContent='Start a new run'; btn.onclick=()=>{ startRun(); hideModal(); }; modalFooter.appendChild(btn); showModal(); return; }
+    State.floor++; State.stageFloor++; nextRoom(); }
 
-  function gameOver(){
-    modalTitle.textContent = 'Game Over';
-    modalContent.innerHTML = `<p>You fell on <b>Floor ${State.floor}</b> with <span class="gold"><b>${State.gold} gold</b></span>.</p>`;
-    modalFooter.innerHTML='';
-    const btn = document.createElement('button'); btn.textContent='Restart run'; btn.onclick=()=>{ startRun(); hideModal(); };
-    modalFooter.appendChild(btn); showModal();
-  }
+  function gameOver(){ modalTitle.textContent = 'Game Over'; modalContent.innerHTML = `<p>You fell on <b>Floor ${State.floor}</b> with <span class="gold"><b>${State.gold} gold</b></span>.</p>`; modalFooter.innerHTML=''; const btn=document.createElement('button'); btn.textContent='Restart run'; btn.onclick=()=>{ startRun(); hideModal(); }; modalFooter.appendChild(btn); showModal(); }
 
   // ===================== Input =====================
   function dirMove(dx,dy){
-    if(State.roomType!=='BATTLE' && State.roomType!=='BOSS') return;
-    if(State.turn!=='PLAYER') return;
-    if(hasEffect(State.player, EFFECTS.FREEZE) || hasEffect(State.player, EFFECTS.STUN)) return;
-    const nx = clamp(State.player.x+dx, 0, GRID_W-1);
-    const ny = clamp(State.player.y+dy, 0, GRID_H-1);
-    if(State.enemies.some(e=>e.x===nx && e.y===ny)) return;
-    State.player.x = nx; State.player.y = ny;
+    if(State.roomType!=='BATTLE' && State.roomType!=='BOSS') return; if(State.turn!=='PLAYER') return; if(hasEffect(State.player, EFFECTS.FREEZE) || hasEffect(State.player, EFFECTS.STUN)) return;
+    const nx = clamp(State.player.x+dx, 0, GRID_W-1); const ny = clamp(State.player.y+dy, 0, GRID_H-1);
+    if(blocked(nx,ny)) return; if(State.enemies.some(e=>e.x===nx && e.y===ny)) return; State.player.x=nx; State.player.y=ny; applyTileOnEnter(State.player);
     if(hasEffect(State.player, EFFECTS.BLEED)) { State.player.hp -= 6; addFloatText(State.player.x, State.player.y, '-6', '#f59999', 40); }
     endPlayerTurn();
   }
@@ -617,6 +604,7 @@
   dpad.addEventListener('click', (e)=>{ const t = e.target.closest('button'); if(!t) return; const dir = t.getAttribute('data-dir'); if(dir==='up') dirMove(0,-1); if(dir==='down') dirMove(0,1); if(dir==='left') dirMove(-1,0); if(dir==='right') dirMove(1,0); });
   document.getElementById('loadoutBtn').onclick = openLoadoutModal;
   document.getElementById('restartBtn').onclick = ()=>{ startRun(); };
+  document.getElementById('muteBtn').onclick = ()=>{ SFX.mute(); SFX.beep('ui'); };
 
   // Ability buttons
   const abilitiesEl = document.getElementById('abilities');
@@ -627,25 +615,29 @@
       b.innerHTML = `<div style="font-size:12px;opacity:.8">Slot ${idx+1} • <span style="color:${ab.color}">${ab.rarity}</span></div>
         <div>${ab.name}</div>
         <div class="smallRow"><span class="pill">CD ${ab.cdLeft||0}/${ab.cd}</span>${ab.range?`<span class="pill">R${ab.range}</span>`:''}${ab.hits>1?`<span class="pill">x${ab.hits}</span>`:''}${ab.element?`<span class="pill">${ab.element}</span>`:''}</div>`;
+      b.title = ab.desc;
       if(ab.cdLeft>0) b.classList.add('cooldown');
+      let pressTimer=null; b.addEventListener('touchstart', ()=>{ pressTimer=setTimeout(()=>showAbilityInfo(ab), 420); }, {passive:true});
+      b.addEventListener('touchend', ()=>{ clearTimeout(pressTimer); }, {passive:true});
+      b.addEventListener('mousedown', ()=>{ pressTimer=setTimeout(()=>showAbilityInfo(ab), 420); });
+      b.addEventListener('mouseup', ()=>{ clearTimeout(pressTimer); });
       b.onclick = ()=> selectAbility(idx);
       abilitiesEl.appendChild(b);
     });
   }
+  function showAbilityInfo(ab){ modalTitle.textContent = ab.name; modalContent.innerHTML = `<p style='color:${ab.color};font-weight:800'>${ab.rarity}</p><p>${ab.desc}</p>`; modalFooter.innerHTML=''; const c=document.createElement('button'); c.textContent='Close'; c.onclick=()=>hideModal(); modalFooter.appendChild(c); showModal(); }
 
   function selectAbility(idx){
     const ab = State.player.abilities[idx];
-    if((State.roomType!=='BATTLE' && State.roomType!=='BOSS') || State.turn!=='PLAYER') return;
-    if(ab.cdLeft>0) return;
+    if((State.roomType!=='BATTLE' && State.roomType!=='BOSS') || State.turn!=='PLAYER') return; if(ab.cdLeft>0) return;
+    document.getElementById('abilityInfo').textContent = `${ab.name}: ${ab.desc}`;
     State.selection = { idx, ab };
     if(ab.type==='tome'){
-      const spend = Math.min(2, State.player.pages);
-      if(spend>0){ State.player.pages -= spend; State.pendingHits = (State.pendingHits||0) + spend; addFloatText(State.player.x, State.player.y, `+${spend} hit`, '#d0c7ff', 45); }
+      const spend = Math.min(2, State.player.pages); if(spend>0){ State.player.pages -= spend; State.pendingHits = (State.pendingHits||0) + spend; addFloatText(State.player.x, State.player.y, `+${spend} hit`, '#d0c7ff', 45); SFX.beep('cast'); }
       ab.cdLeft = ab.cd; State.selection=null; updateHUD(); return;
     }
     if(ab.type==='stealth'){
-      addEffect(State.player, EFFECTS.STEALTH, 1 + (State.player.armorMods?.stealthPlus||0));
-      addFloatText(State.player.x, State.player.y, 'STEALTH', '#9ad5ff', 45);
+      addEffect(State.player, EFFECTS.STEALTH, 1 + (State.player.armorMods?.stealthPlus||0)); addFloatText(State.player.x, State.player.y, 'STEALTH', '#9ad5ff', 45); SFX.beep('cast');
       ab.cdLeft = ab.cd; State.selection=null; endPlayerTurn();
     }
   }
@@ -654,9 +646,7 @@
   function startPlayerTurn(){
     const {skip} = processEffects(State.player);
     if(State.player.class==='Cleric' && State.player.talents.Mercy && Math.random()<0.2){ State.player.abilities.forEach(a=>{ if(a.cdLeft>0) a.cdLeft--; }); addFloatText(State.player.x, State.player.y, 'Mercy', '#c9ffe5', 40); }
-    renderAbilityButtons(); updateHUD();
-    if(State.player.hp<=0){ gameOver(); return; }
-    if(skip){ endPlayerTurn(true); return; }
+    renderAbilityButtons(); updateHUD(); if(State.player.hp<=0){ gameOver(); return; } if(skip){ endPlayerTurn(true); return; }
   }
 
   function endPlayerTurn(skipped=false){
@@ -668,40 +658,16 @@
 
   function enemyTurn(){
     for(const e of [...State.enemies]){
-      const {skip} = processEffects(e);
-      if(e.hp<=0) continue;
-      if(skip){ continue; }
-
-      // move toward player
-      let dx = Math.sign(State.player.x - e.x);
-      let dy = Math.sign(State.player.y - e.y);
-      const wantXFirst = Math.abs(State.player.x-e.x) > Math.abs(State.player.y-e.y);
-      function tryMove(nx, ny){
-        if(nx<0||ny<0||nx>=GRID_W||ny>=GRID_H) return false;
-        if(State.enemies.some(o=>o!==e && o.x===nx && o.y===ny)) return false;
-        if(State.player.x===nx && State.player.y===ny) return false;
-        e.x=nx; e.y=ny; return true;
-      }
-      if(wantXFirst){ if(!tryMove(e.x+dx, e.y)) tryMove(e.x, e.y+dy); } else { if(!tryMove(e.x, e.y+dy)) tryMove(e.x+dx, e.y); }
-
+      const {skip} = processEffects(e); if(e.hp<=0) continue; if(skip) continue;
+      const step = nextStepTowards(e, State.player.x, State.player.y); if(step.x!==e.x||step.y!==e.y){ e.x=step.x; e.y=step.y; applyTileOnEnter(e); }
       if(hasEffect(e, EFFECTS.BLEED)) e.hp -= 6;
-
-      // attack if adjacent
       if(Math.abs(e.x-State.player.x)+Math.abs(e.y-State.player.y)===1){
-        let dmg = e.dmg;
-        if(State.player.shields>0){ const soak = Math.min(State.player.shields, dmg); State.player.shields -= soak; dmg -= soak; }
-        if(dmg>0){
-          State.player.hp -= dmg; addFloatText(State.player.x, State.player.y, `-${dmg}`, 'var(--bad)', 50);
-          screenShake(8); FX.hitFlash = Math.min(0.3, FX.hitFlash+0.2);
-          if(State.player.class==='Fighter' && State.player.talents.Riposte && Math.random()<0.25){ e.hp -= 6; addFloatText(e.x, e.y, '-6 (Riposte)', '#ffe0a5', 40); }
-        }
+        let dmg = e.dmg; if(State.player.shields>0){ const soak = Math.min(State.player.shields, dmg); State.player.shields -= soak; dmg -= soak; }
+        if(dmg>0){ State.player.hp -= dmg; addFloatText(State.player.x, State.player.y, `-${dmg}`, '#ff8a8a', 50); screenShake(8); FX.hitFlash = Math.min(0.3, FX.hitFlash+0.2); SFX.beep('hit'); if(State.player.class==='Fighter' && State.player.talents.Riposte && Math.random()<0.25){ e.hp -= 6; addFloatText(e.x, e.y, '-6 (Riposte)', '#ffe0a5', 40); } }
       }
     }
-
     State.enemies = State.enemies.filter(e=>e.hp>0);
-    updateHUD();
-    if(State.player.hp<=0){ gameOver(); return; }
-    State.turn = 'PLAYER'; startPlayerTurn();
+    updateHUD(); if(State.player.hp<=0){ gameOver(); return; } State.turn = 'PLAYER'; startPlayerTurn();
   }
 
   // ===================== Targeting via tapping grid =====================
@@ -710,92 +676,70 @@
 
   function handleTap(ev){
     if((State.roomType!=='BATTLE' && State.roomType!=='BOSS') || State.turn!=='PLAYER') return;
-    const x = (ev.clientX||0)*DPR, y=(ev.clientY||0)*DPR;
-    const gx = Math.floor((x - gridOffsetX)/TILE); const gy = Math.floor((y - gridOffsetY)/TILE);
+    const x = (ev.clientX||0)*DPR, y=(ev.clientY||0)*DPR; const gx = Math.floor((x - gridOffsetX)/TILE); const gy = Math.floor((y - gridOffsetY)/TILE);
     if(gx<0||gy<0||gx>=GRID_W||gy>=GRID_H) return;
 
     if(State.selection){
-      const {ab} = State.selection;
-      const dist = Math.abs(gx-State.player.x)+Math.abs(gy-State.player.y);
+      const {ab} = State.selection; const dist = Math.abs(gx-State.player.x)+Math.abs(gy-State.player.y);
       if(ab.type==='attack'){
-        if(dist<=ab.range){
-          const target = State.enemies.find(e=>e.x===gx && e.y===gy);
-          if(target){
-            resolveAttack(State.player, target, ab);
-            if(State.enemies.length===0){
-              const goldGain = rand(15,30) + 5*(State.floor-1); State.gold += goldGain; updateHUD(); openLootModal(); return;
-            }
-            State.selection=null; endPlayerTurn();
-          }
-        }
+        if(dist<=ab.range){ const target = State.enemies.find(e=>e.x===gx && e.y===gy); if(target){ resolveAttack(State.player, target, ab); if(State.enemies.length===0){ const goldGain = rand(15,30) + 5*(State.floor-1); State.gold += goldGain; updateHUD(); openLootModal(); return; } State.selection=null; endPlayerTurn(); SFX.beep('cast'); } }
       } else if(ab.type==='heal'){
-        if(gx===State.player.x && gy===State.player.y){
-          let amt = ab.heal; if(State.player.class==='Cleric' && State.player.talents.Sanctify) amt = Math.round(amt*1.2);
-          State.player.hp = clamp(State.player.hp + amt, 0, State.player.maxHp);
-          addFloatText(State.player.x, State.player.y, `+${amt}`, 'var(--good)', 50);
-          if(State.player.class==='Cleric' && CLASSES.Cleric.passiveOnHeal) CLASSES.Cleric.passiveOnHeal(amt);
-          ab.cdLeft = ab.cd; State.selection=null; updateHUD(); endPlayerTurn();
-        }
+        if(gx===State.player.x && gy===State.player.y){ let amt = ab.heal; if(State.player.class==='Cleric' && State.player.talents.Sanctify) amt = Math.round(amt*1.2); State.player.hp = clamp(State.player.hp + amt, 0, State.player.maxHp); addFloatText(State.player.x, State.player.y, `+${amt}`, '#7cf59a', 50); if(State.player.class==='Cleric' && CLASSES.Cleric.passiveOnHeal) CLASSES.Cleric.passiveOnHeal(amt); ab.cdLeft = ab.cd; State.selection=null; updateHUD(); endPlayerTurn(); SFX.beep('heal'); }
       } else if(ab.type==='shield'){
-        if(gx===State.player.x && gy===State.player.y){ State.player.shields += ab.shield; addFloatText(State.player.x, State.player.y, `+${ab.shield}🛡`, '#bde7ff', 40); ab.cdLeft=ab.cd; State.selection=null; endPlayerTurn(); }
+        if(gx===State.player.x && gy===State.player.y){ State.player.shields += ab.shield; addFloatText(State.player.x, State.player.y, `+${ab.shield}🛡`, '#bde7ff', 40); ab.cdLeft=ab.cd; State.selection=null; endPlayerTurn(); SFX.beep('cast'); }
       } else if(ab.type==='move'){
-        if(dist<=ab.range && !State.enemies.some(e=>e.x===gx && e.y===gy)){
-          State.player.x = gx; State.player.y = gy; addFloatText(gx, gy, 'BLINK', '#8ad1ff', 40); ab.cdLeft = ab.cd; State.selection=null; endPlayerTurn();
-        }
+        if(dist<=ab.range && !State.enemies.some(e=>e.x===gx && e.y===gy) && !blocked(gx,gy)){ State.player.x = gx; State.player.y = gy; applyTileOnEnter(State.player); addFloatText(gx, gy, 'BLINK', '#8ad1ff', 40); ab.cdLeft = ab.cd; State.selection=null; endPlayerTurn(); SFX.beep('cast'); }
       }
     }
   }
 
   function resolveAttack(attacker, target, ab){
     let hits = ab.hits + (State.pendingHits||0); State.pendingHits = 0;
-    // Flurry (Rogue) — first attack each battle
     if(State.player===attacker && State.player.class==='Rogue' && State.player.talents.Flurry && !State._flurryUsed){ hits++; State._flurryUsed=true; addFloatText(attacker.x, attacker.y, 'FLURRY +1', '#d6b8ff', 45); }
-
     for(let i=0;i<hits;i++){
-      let dmg = ab.dmg;
-      if(State.player===attacker && State.player.class==='Fighter' && State.player.talents.BrutalStrikes) dmg = Math.round(dmg*1.2);
-      if(State.player===attacker && State.player.talents.Conduction && hasEffect(target, EFFECTS.SHOCK)) dmg = Math.round(dmg*1.25);
-      if(State.player===attacker && State.player.talents.Expose && hasEffect(target, EFFECTS.BLEED)) dmg = Math.round(dmg*1.3);
-
-      dmg = onHitCombos(attacker, target, dmg, {element:ab.element});
-      target.hp -= dmg; addFloatText(target.x, target.y, `-${dmg}`, 'var(--bad)', 50);
-
-      // Apply element status
+      let dmg = ab.dmg; if(State.player===attacker && State.player.class==='Fighter' && State.player.talents.BrutalStrikes) dmg = Math.round(dmg*1.2); if(State.player===attacker && State.player.talents.Conduction && hasEffect(target, EFFECTS.SHOCK)) dmg = Math.round(dmg*1.25); if(State.player===attacker && State.player.talents.Expose && hasEffect(target, EFFECTS.BLEED)) dmg = Math.round(dmg*1.3);
+      dmg = onHitCombos(attacker, target, dmg, {element:ab.element}); target.hp -= dmg; addFloatText(target.x, target.y, `-${dmg}`, '#ff8a8a', 50);
       if(ab.element==='Flaming') addEffect(target, EFFECTS.BURN, 3, (4 + (State.player.armorMods?.burnPlus||0)));
       if(ab.element==='Frost'){ addEffect(target, EFFECTS.FREEZE, 1 + (State.player.talents.Glacier?1:0)); }
       if(ab.element==='Shock'){ addEffect(target, EFFECTS.SHOCK, 1 + (State.player.armorMods?.shockPlus||0)); }
       if(ab.element==='Venom') addEffect(target, EFFECTS.POISON, 3, 5);
       if(ab.element==='Shadow') addEffect(target, EFFECTS.BLEED, 3, 0);
-
       if(State.player===attacker && State.player.class==='Wizard' && State.player.talents.ArcaneBattery){ State.player._casts=(State.player._casts||0)+1; if(State.player._casts%3===0) { ab.cdLeft=0; addFloatText(attacker.x, attacker.y, 'BATTERY!', '#b6f7ff', 45); } }
       if(ab.element==='Shock' && hasEffect(target, EFFECTS.BURN) && State.player.armorMods?.overloadPlus){ splashDamage(target.x,target.y, State.player.armorMods.overloadPlus); }
     }
-
     if(target.hp<=0 && State.player===attacker && State.player.class==='Fighter') CLASSES.Fighter.passiveOnKill();
-    ab.cdLeft = ab.cd; State.selection=null; State.enemies = State.enemies.filter(e=>e.hp>0);
+    ab.cdLeft = ab.cd; State.selection=null; State.enemies = State.enemies.filter(e=>e.hp>0); SFX.beep('hit');
   }
 
   // ===================== Rendering =====================
   function drawGrid(){
     ctx.save();
     if(FX.shake>0){ ctx.translate((Math.random()-0.5)*FX.shake, (Math.random()-0.5)*FX.shake); FX.shake*=0.92; if(FX.shake<0.2) FX.shake=0; }
-
     const g = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 10, canvas.width/2, canvas.height/2, Math.max(canvas.width,canvas.height)/1.2);
     g.addColorStop(0, '#101635'); g.addColorStop(1, '#060914'); ctx.fillStyle = g; ctx.fillRect(0,0,canvas.width,canvas.height);
 
+    // tiles
     for(let y=0;y<GRID_H;y++){
       for(let x=0;x<GRID_W;x++){
-        const gx = gridOffsetX + x*TILE; const gy = gridOffsetY + y*TILE;
-        ctx.fillStyle = ((x+y)%2===0)?'#111a3a':'#0e1631'; ctx.fillRect(gx, gy, TILE-2, TILE-2);
+        const t=tileAt(x,y); const gx = gridOffsetX + x*TILE; const gy = gridOffsetY + y*TILE;
+        let col = ((x+y)%2===0)?'#111a3a':'#0e1631';
+        if(t===TILES.WALL) col = '#1b1540'; if(t===TILES.LAVA) col='#5a0f0f'; if(t===TILES.BUSH) col='#0f2a1a'; if(t===TILES.BOOK) col='#2a1a0f'; if(t===TILES.HEAL) col='#0f2a2a'; if(t===TILES.SPIKES) col='#23262f';
+        ctx.fillStyle = col; ctx.fillRect(gx, gy, TILE-2, TILE-2);
+        ctx.font = `${Math.floor(12*DPR)}px sans-serif`; ctx.textAlign='center';
+        if(t===TILES.LAVA){ ctx.fillStyle='#ff9a66'; ctx.globalAlpha=0.6+0.4*Math.random(); ctx.fillRect(gx+3,gy+3,TILE-8,TILE-8); ctx.globalAlpha=1; }
+        if(t===TILES.BUSH){ ctx.fillStyle='#7cf59a'; ctx.fillText('🌿', gx+TILE/2, gy+TILE*0.65); }
+        if(t===TILES.BOOK){ ctx.fillStyle='#ffd6a6'; ctx.fillText('📚', gx+TILE/2, gy+TILE*0.65); }
+        if(t===TILES.HEAL){ ctx.fillStyle='#8ad1ff'; ctx.fillText('💧', gx+TILE/2, gy+TILE*0.65); }
+        if(t===TILES.SPIKES){ ctx.fillStyle='#b5c1d1'; ctx.fillText('△△', gx+TILE/2, gy+TILE*0.65); }
       }
     }
 
-    // selection highlights
+    // selection highlight
     if(State.selection){
       const ab = State.selection.ab; ctx.globalAlpha = 0.35; ctx.fillStyle = ab.type==='attack'?'#ff6565':(ab.type==='move'?'#8ad1ff':'#7cf59a');
       for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++){
         const dist = Math.abs(x-State.player.x)+Math.abs(y-State.player.y);
-        if((ab.type==='attack'||ab.type==='move') && dist<=ab.range) ctx.fillRect(gridOffsetX+x*TILE, gridOffsetY+y*TILE, TILE-2, TILE-2);
+        if((ab.type==='attack'||ab.type==='move') && dist<=ab.range && !blocked(x,y)) ctx.fillRect(gridOffsetX+x*TILE, gridOffsetY+y*TILE, TILE-2, TILE-2);
         if((ab.type==='heal'||ab.type==='shield') && x===State.player.x && y===State.player.y) ctx.fillRect(gridOffsetX+x*TILE, gridOffsetY+y*TILE, TILE-2, TILE-2);
       }
       ctx.globalAlpha = 1;
@@ -804,12 +748,13 @@
     // enemies
     for(const e of State.enemies){
       const gx = gridOffsetX + e.x*TILE + TILE/2; const gy = gridOffsetY + e.y*TILE + TILE/2;
-      if(images.slime){ ctx.drawImage(images.slime, gx-TILE/2+8, gy-TILE/2+8, TILE-16, TILE-16); }
+      const img = e.isBoss?images.boss:images.enemy;
+      if(img){ ctx.drawImage(img, gx-TILE/2+8, gy-TILE/2+8, TILE-16, TILE-16); }
       else { ctx.fillStyle = '#7cf59a'; ctx.beginPath(); ctx.arc(gx, gy, TILE*0.32, 0, Math.PI*2); ctx.fill(); }
       const baseHp = e.isBoss ? STAGES[State.stage].boss.hp : (30 + 12*State.floor);
       const pct = clamp(e.hp/baseHp,0,1);
       ctx.fillStyle = '#000'; ctx.fillRect(gx-TILE*0.35, gy-TILE*0.55, TILE*0.7, 6);
-      ctx.fillStyle = e.isBoss ? 'var(--boss)' : '#ff7a7a'; ctx.fillRect(gx-TILE*0.35, gy-TILE*0.55, TILE*0.7*pct, 6);
+      ctx.fillStyle = e.isBoss ? '#ff7ad6' : '#ff7a7a'; ctx.fillRect(gx-TILE*0.35, gy-TILE*0.55, TILE*0.7*pct, 6);
       if(e.isBoss){ ctx.font = `${Math.floor(12*DPR)}px sans-serif`; ctx.fillStyle='#ffd6f2'; ctx.textAlign='center'; ctx.fillText('👑 '+(e.name||'Boss'), gx, gy - TILE*0.6); }
     }
 
@@ -817,19 +762,11 @@
     const px = gridOffsetX + State.player.x*TILE + TILE/2; const py = gridOffsetY + State.player.y*TILE + TILE/2;
     if(images.hero){ ctx.drawImage(images.hero, px-TILE/2+4, py-TILE/2, TILE-8, TILE-8); }
     else { ctx.fillStyle = '#8ad1ff'; ctx.fillRect(px-TILE*0.35, py-TILE*0.35, TILE*0.7, TILE*0.7); }
-
     if(State.player.shields>0){ ctx.strokeStyle = '#8ad1ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px,py,TILE*0.42,0,Math.PI*2); ctx.stroke(); }
-    if(hasEffect(State.player, EFFECTS.STEALTH)){
-      ctx.globalAlpha = 0.35; ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(px,py,TILE*0.45,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
-      ctx.font = `${Math.floor(12*DPR)}px sans-serif`; ctx.fillStyle='#9ad5ff'; ctx.textAlign='center'; ctx.fillText('STEALTH', px, py - TILE*0.6);
-    }
+    if(hasEffect(State.player, EFFECTS.STEALTH)){ ctx.globalAlpha = 0.35; ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(px,py,TILE*0.45,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; ctx.font = `${Math.floor(12*DPR)}px sans-serif`; ctx.fillStyle='#9ad5ff'; ctx.textAlign='center'; ctx.fillText('STEALTH', px, py - TILE*0.6); }
 
     // floating text
-    for(const f of FX.floaters){
-      f.x += 0; f.y += f.vy; f.ttl--; const a = Math.max(0, f.ttl/f.life);
-      ctx.globalAlpha = a; ctx.fillStyle = f.color; ctx.font = `${Math.floor(16*DPR)}px sans-serif`; ctx.textAlign='center'; ctx.fillText(f.text, f.x, f.y);
-      ctx.globalAlpha = 1;
-    }
+    for(const f of FX.floaters){ f.y += f.vy; f.ttl--; const a = Math.max(0, f.ttl/f.life); ctx.globalAlpha = a; ctx.fillStyle = f.color; ctx.font = `${Math.floor(16*DPR)}px sans-serif`; ctx.textAlign='center'; ctx.fillText(f.text, f.x, f.y); ctx.globalAlpha = 1; }
     FX.floaters = FX.floaters.filter(f=>f.ttl>0);
 
     // banner
@@ -840,47 +777,66 @@
     let ty = 40*DPR; for(const t of FX.toasts){ ctx.globalAlpha = Math.min(1, t.time/30); ctx.fillStyle = t.color; ctx.font = `${Math.floor(22*DPR)}px sans-serif`; ctx.textAlign='center'; ctx.fillText(t.text, canvas.width/2, ty); ctx.globalAlpha = 1; t.time--; ty += 28*DPR; }
     FX.toasts = FX.toasts.filter(t=>t.time>0);
 
-    // hit flash overlay
     if(FX.hitFlash>0){ ctx.fillStyle = 'rgba(255,60,60,'+FX.hitFlash+')'; ctx.fillRect(0,0,canvas.width,canvas.height); FX.hitFlash=Math.max(0, FX.hitFlash-0.02); }
-
     ctx.restore();
   }
 
   function loop(){ drawGrid(); requestAnimationFrame(loop); }
-  requestAnimationFrame(loop);
 
   // ===================== Run Setup =====================
   function openClassSelect(){
     modalTitle.textContent='Choose Your Class'; modalContent.innerHTML=''; modalFooter.innerHTML='';
     const wrap=document.createElement('div'); wrap.className='choices';
-    Object.entries(CLASSES).forEach(([name,def])=>{
-      const d=document.createElement('div'); d.className='choice';
-      d.innerHTML=`<div class='title'>${name}</div><div class='row'>${def.desc}</div>`;
-      const b=document.createElement('button'); b.textContent=`Become ${name}`; b.onclick=()=>{ State.player.class=name; if(def.onStart) def.onStart(State.player); State.player.abilities = newAbilitySet(); State._flurryUsed=false; renderAbilityButtons(); updateHUD(); hideModal(); nextRoom(); };
-      d.appendChild(b); wrap.appendChild(d);
-    });
+    Object.entries(CLASSES).forEach(([name,def])=>{ const d=document.createElement('div'); d.className='choice'; d.innerHTML=`<div class='title'>${name}</div><div class='row'>${def.desc}</div>`; const b=document.createElement('button'); b.textContent=`Become ${name}`; b.onclick=()=>{ State.player.class=name; if(def.onStart) def.onStart(State.player); State.player.abilities = newAbilitySet(); State._flurryUsed=false; renderAbilityButtons(); updateHUD(); hideModal(); nextRoom(); SFX.beep('ui'); }; d.appendChild(b); wrap.appendChild(d); });
+    const legend=document.createElement('div'); legend.className='choice'; legend.innerHTML="<div class='title'>Legend</div><div class='row'>Tap an ability then tap a tile • Long-press ability for details • Bush = stealth • 📚 = Pages • 🔺 = spikes • Lava burns</div>"; wrap.appendChild(legend);
     modalContent.appendChild(wrap); showModal();
   }
 
   function startRun(){
-    State.gold=0; State.floor=1; State.stage=0; State.stageFloor=1; State.storyIndex=0;
-    State.player.hp=100; State.player.maxHp=100; State.player.shields=0; State.player.effects=[]; State.player.pages=0; State.player.talents={}; State.player.armor=null; State.player.armorMods={}; State.pendingHits=0; State.extraActions=0; State._flurryUsed=false;
-    renderAbilityButtons(); updateHUD(); openClassSelect();
-    addToast('A new run begins...', '#cde3ff', 120);
+    State.gold=0; State.floor=1; State.stage=0; State.stageFloor=1; State.storyIndex=0; State.player.hp=100; State.player.maxHp=100; State.player.shields=0; State.player.effects=[]; State.player.pages=0; State.player.talents={}; State.player.armor=null; State.player.armorMods={}; State.pendingHits=0; State.extraActions=0; State._flurryUsed=false; renderAbilityButtons(); updateHUD(); openClassSelect(); addToast('A new run begins...', '#cde3ff', 120);
   }
 
-  // Keep UI refreshed
   setInterval(()=>{ renderAbilityButtons(); }, 300);
 
-  // Initialize
+  // ===================== Dev Self-Tests =====================
+  function runSelfTests(){
+    const results = [];
+    const ok = (name, cond)=>{ results.push({name, pass: !!cond}); if(!cond) console.error('❌ Test failed:', name); };
+    try{
+      // tileAt safety
+      const keep = Map.tiles;
+      Map.tiles = []; const t0 = tileAt(0,0); ok('tileAt safe with empty Map.tiles', typeof t0 === 'number');
+      Map.tiles = keep;
+
+      // room generation
+      genRoom(); ok('genRoom builds rows', Array.isArray(Map.tiles) && Map.tiles.length===GRID_H);
+      ok('genRoom row width', Array.isArray(Map.tiles[0]) && Map.tiles[0].length===GRID_W);
+
+      // BFS step returns in-bounds
+      const e={x:GRID_W-2,y:Math.floor(GRID_H/2),hp:10,dmg:1,effects:[]};
+      const step = nextStepTowards(e,1,Math.floor(GRID_H/2));
+      ok('BFS returns in-bounds', step && inBounds(step.x, step.y));
+
+      // ability generator
+      const abset = newAbilitySet();
+      ok('Ability set length = 4', abset.length===4);
+      ok('Abilities have names', abset.every(a=>a && a.name));
+
+      // effects processing
+      const ent={x:0,y:0,hp:10,effects:[{type:EFFECTS.FREEZE,duration:1}]};
+      const r = processEffects(ent);
+      ok('Freeze causes skip', r.skip===true);
+    }catch(err){
+      console.error('Self-tests threw', err);
+    }
+    console.table(results);
+  }
+
+  // Boot order: run tests, start run, then start render loop
+  runSelfTests();
   startRun();
+  requestAnimationFrame(loop);
 })();
 </script>
-
-<!--
-Sprite sources (CC0 / public domain, used via direct hotlink with graceful fallback if unreachable):
-- Kenney.nl asset packs. If these URLs fail, the game draws simple shapes instead.
-  https://kenney.nl/
--->
 </body>
 </html>
