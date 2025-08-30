@@ -533,123 +533,91 @@ function replaceAbilityFlow(newAb, price) {
 }
 
 function openLootModal() {
-  modalTitle.textContent =
-    State.roomType === "BOSS"
-      ? "Boss Defeated! Choose rewards"
-      : "Victory! Choose rewards";
-  modalContent.innerHTML = "";
-  modalFooter.innerHTML = "";
-  const root = document.createElement("div");
-  const loot = [makeAbility(), makeAbility(), makeAbility()],
-    abWrap = document.createElement("div");
-  abWrap.className = "choices";
-  loot.forEach((ab) => {
-    const d = document.createElement("div");
-    d.className = "choice";
-    d.innerHTML = `<div class="title" style="color:${ab.color}">${ab.name
-      } <span class="pill">${ab.rarity
-      }</span></div><div class="row"><span>${ab.desc
-      }</span></div><div class="row"><span class="pill">CD ${ab.cd
-      }</span><span class="pill">Range ${ab.range || 1}</span>${ab.hits > 1 ? `<span class="pill">Hits ${ab.hits}</span>` : ""
-      }</div>`;
-    const b = document.createElement("button");
-    b.className = "btn btn--small btn--primary";
-    b.textContent = "Take & replace...";
-    b.onclick = () => {
-      replaceAbilityFlow(ab, 0);
-      SFX.beep("loot");
-    };
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'btn btn--small btn--ghost';
-    saveBtn.textContent = 'Save (carry-over)';
-    saveBtn.onclick = () => {
-      if (window.addSavedAbility) {
-        const before = loadSavedAbilities();
-        if (before.length >= 2) {
-          saveBtn.textContent = 'Carry limit reached';
-          return;
-        }
-        addSavedAbility(ab);
-        const after = loadSavedAbilities();
-        if (after.length > before.length) {
-          saveBtn.textContent = 'Saved';
-          saveBtn.disabled = true;
-        } else {
-          saveBtn.textContent = 'Already saved';
-        }
-      }
-    };
-    d.appendChild(b);
-    d.appendChild(saveBtn);
-    abWrap.appendChild(d);
-  });
-  root.appendChild(document.createElement("h3")).textContent =
-    "Abilities";
-  root.appendChild(abWrap);
+  modalTitle.textContent = State.roomType === 'BOSS' ? 'Boss Defeated! Choose a reward' : 'Victory! Choose a reward';
+  modalContent.innerHTML = '';
+  modalFooter.innerHTML = '';
 
-  const roll = Math.random();
-  if (roll < 0.5) {
-    const picks = [choice(ARMOR_POOL), choice(ARMOR_POOL)],
-      aw = document.createElement("div");
-    aw.className = "choices";
-    picks.forEach((a) => {
-      const d = document.createElement("div");
-      d.className = "choice";
-      d.innerHTML = `<div class='title'>${a.name}</div><div class='row'>${a.desc}</div>`;
-      const b = document.createElement("button");
-      b.className = "btn btn--small btn--primary";
-      b.textContent = "Equip";
-      b.onclick = () => {
-        equipArmor(a);
-        hideModal();
-        afterRewards();
-      };
-      d.appendChild(b);
-      aw.appendChild(d);
-    });
-    root.appendChild(document.createElement("h3")).textContent =
-      "Bonus: Armor";
-    root.appendChild(aw);
-  } else {
-    const clazz = CLASSES[State.player.class];
-    if (clazz) {
-      const pool = [...clazz.talents];
-      const picks = [
-        pool.splice(rand(0, pool.length - 1), 1)[0],
-        pool.splice(rand(0, Math.max(0, pool.length - 1)), 1)[0],
-      ].filter(Boolean);
-      if (picks.length) {
-        const tw = document.createElement("div");
-        tw.className = "choices";
-        picks.forEach((t) => {
-          const d = document.createElement("div");
-          d.className = "choice";
-          d.innerHTML = `<div class='title'>${t.label}</div>`;
-          const b = document.createElement("button");
-          b.className = "btn btn--small btn--primary";
-          b.textContent = "Learn";
-          b.onclick = () => {
-            t.apply(State.player);
-            hideModal();
-            afterRewards();
-          };
-          d.appendChild(b);
-          tw.appendChild(d);
-        });
-        root.appendChild(document.createElement("h3")).textContent =
-          "Bonus: Talent";
-        root.appendChild(tw);
-      }
+  // Build a unified reward list of length 3 mixing abilities, armor, talents.
+  const rewards = [];
+  // Always at least one ability
+  rewards.push({ type:'ability', data: makeAbility() });
+  // Candidate pools
+  const armorCandidate = choice(ARMOR_POOL);
+  const clazz = CLASSES[State.player.class];
+  let talentCandidate = null;
+  if (clazz && clazz.talents && clazz.talents.length) {
+    // pick a random talent not yet learned (if any)
+    const avail = clazz.talents.filter(t => !State.player.talents[t.key]);
+    if (avail.length) talentCandidate = choice(avail);
+  }
+  // Decide remaining slots (2) from armor / talent / abilities ensuring no duplicates by object reference
+  const slotsNeeded = 2;
+  const poolOrder = [];
+  if (talentCandidate) poolOrder.push('talent');
+  poolOrder.push('armor');
+  // Fill with an extra ability if still space
+  while (rewards.length < 1 + slotsNeeded) {
+    if (poolOrder.length) {
+      const kind = poolOrder.shift();
+      if (kind === 'armor') rewards.push({ type:'armor', data: armorCandidate });
+      else if (kind === 'talent' && talentCandidate) rewards.push({ type:'talent', data: talentCandidate });
+    } else {
+      rewards.push({ type:'ability', data: makeAbility() });
     }
   }
-  modalContent.appendChild(root);
-  const skip = document.createElement("button");
-  skip.className = "btn btn--ghost";
-  skip.textContent = "Skip (keep current)";
-  skip.onclick = () => {
-    hideModal();
-    afterRewards();
-  };
+
+  const wrap = document.createElement('div');
+  wrap.className = 'choices';
+  rewards.forEach((r,i) => {
+    const card = document.createElement('div');
+    card.className = 'choice';
+    if (r.type === 'ability') {
+      const ab = r.data;
+      card.innerHTML = `<div class='title' style='color:${ab.color}'>${ab.name} <span class='pill'>${ab.rarity}</span> <span class='pill'>Ability</span></div>
+        <div class='row'><span>${ab.desc}</span></div>
+        <div class='row'><span class='pill'>CD ${ab.cd}</span><span class='pill'>Range ${ab.range||1}</span>${ab.hits>1?`<span class='pill'>Hits ${ab.hits}</span>`:''}</div>`;
+      const take = document.createElement('button');
+      take.className = 'btn btn--small btn--primary';
+      take.textContent = 'Take & replace...';
+      take.onclick = () => { replaceAbilityFlow(ab,0); SFX.beep('loot'); };
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'btn btn--small btn--ghost';
+      saveBtn.textContent = 'Save (carry-over)';
+      saveBtn.onclick = () => {
+        if (!window.addSavedAbility) return;
+        const before = loadSavedAbilities();
+        if (before.length >= 2) { saveBtn.textContent='Carry limit reached'; return; }
+        addSavedAbility(ab);
+        const after = loadSavedAbilities();
+        if (after.length > before.length) { saveBtn.textContent='Saved'; saveBtn.disabled = true; } else { saveBtn.textContent='Already saved'; }
+      };
+      card.appendChild(take); card.appendChild(saveBtn);
+    } else if (r.type === 'armor') {
+      const ar = r.data;
+      card.innerHTML = `<div class='title'>${ar.name} <span class='pill'>Armor</span></div><div class='row'>${ar.desc}</div>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn--small btn--primary';
+      btn.textContent = 'Equip';
+      btn.onclick = () => { equipArmor(ar); hideModal(); afterRewards(); };
+      card.appendChild(btn);
+    } else if (r.type === 'talent') {
+      const t = r.data;
+      card.innerHTML = `<div class='title'>${t.label} <span class='pill'>Talent</span></div>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn--small btn--primary';
+      btn.textContent = 'Learn';
+      btn.onclick = () => { t.apply(State.player); hideModal(); afterRewards(); };
+      card.appendChild(btn);
+    }
+    wrap.appendChild(card);
+  });
+
+  modalContent.appendChild(document.createElement('h3')).textContent = 'Rewards (choose one)';
+  modalContent.appendChild(wrap);
+  const skip = document.createElement('button');
+  skip.className = 'btn btn--ghost';
+  skip.textContent = 'Skip (keep current)';
+  skip.onclick = () => { hideModal(); afterRewards(); };
   modalFooter.appendChild(skip);
   showModal();
 }
