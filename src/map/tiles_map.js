@@ -131,6 +131,79 @@ function genRoom() {
   // clear spawns
   Map.tiles[Math.floor(GRID_H / 2)][1] = TILES.FLOOR;
   Map.tiles[Math.floor(GRID_H / 2)][GRID_W - 2] = TILES.FLOOR;
+
+  // Ensure full connectivity of all non-wall tiles so nothing is isolated.
+  ensureConnectivity();
+}
+
+// Guarantee every non-wall tile is reachable from the primary spawn (mid-left).
+function ensureConnectivity() {
+  const startX = 1, startY = Math.floor(GRID_H / 2);
+  if (Map.tiles[startY][startX] === TILES.WALL) Map.tiles[startY][startX] = TILES.FLOOR;
+
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+
+  const passable = (x,y) => Map.tiles[y][x] !== TILES.WALL;
+
+  function flood() {
+    const visited = Array.from({length: GRID_H},()=>Array(GRID_W).fill(false));
+    const q = [[startX,startY]];
+    visited[startY][startX] = true;
+    const visitedList = [[startX,startY]];
+    while(q.length){
+      const [x,y] = q.shift();
+      for (const [dx,dy] of dirs){
+        const nx = x+dx, ny = y+dy;
+        if (nx>=0 && ny>=0 && nx<GRID_W && ny<GRID_H && !visited[ny][nx] && passable(nx,ny)) {
+          visited[ny][nx] = true;
+            visitedList.push([nx,ny]);
+          q.push([nx,ny]);
+        }
+      }
+    }
+    return { visited, visitedList };
+  }
+
+  function totalPassable() {
+    let c=0;
+    for (let y=0;y<GRID_H;y++) for (let x=0;x<GRID_W;x++) if (passable(x,y)) c++;
+    return c;
+  }
+
+  let { visited, visitedList } = flood();
+  const targetCount = totalPassable();
+
+  // Helper find first unvisited passable tile
+  function findUnvisited() {
+    for (let y=0;y<GRID_H;y++) for (let x=0;x<GRID_W;x++) if (passable(x,y) && !visited[y][x]) return [x,y];
+    return null;
+  }
+
+  // Connect components by carving a straight Manhattan corridor to nearest visited tile.
+  while (true) {
+    const next = findUnvisited();
+    if (!next) break; // all connected
+    const [ux,uy] = next;
+    // pick nearest visited tile (Manhattan)
+    let best = null; let bestD = Infinity;
+    for (const [vx,vy] of visitedList) {
+      const d = Math.abs(vx-ux)+Math.abs(vy-uy);
+      if (d < bestD) { bestD = d; best = [vx,vy]; }
+    }
+    if (!best) break; // safety
+    let cx = ux, cy = uy;
+    // carve from unvisited tile toward best until we intersect visited region
+    while (!visited[cy][cx]) {
+      if (Map.tiles[cy][cx] === TILES.WALL) Map.tiles[cy][cx] = TILES.FLOOR; // carve
+      // step horizontally or vertically towards target
+      const [tx,ty] = best;
+      if (cx !== tx) cx += cx < tx ? 1 : -1; else if (cy !== ty) cy += cy < ty ? 1 : -1;
+      if (cx<0||cy<0||cx>=GRID_W||cy>=GRID_H) break; // safety
+    }
+    // Recompute visited after carving
+    ({ visited, visitedList } = flood());
+    if (visitedList.length >= targetCount) break;
+  }
 }
 
 function applyTileOnEnter(entity) {
