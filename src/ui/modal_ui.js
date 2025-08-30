@@ -115,7 +115,7 @@ function openStarterLoadoutModal() {
       const rm = document.createElement('button');
       rm.className = 'btn btn--small btn--ghost';
       rm.textContent = 'Remove';
-      rm.onclick = () => { chosen.splice(i,1); renderChosen(); updateFooterState(); };
+  rm.onclick = () => { chosen.splice(i,1); renderChosen(); updateFooterState(); refreshPoolButtons(); };
       d.appendChild(rm);
       chosenWrap.appendChild(d);
     });
@@ -123,12 +123,13 @@ function openStarterLoadoutModal() {
 
   function abilityCard(ab, sourceLabel, sourceType) {
     const div = document.createElement('div');
-    div.className = 'choice' + (sourceType==='lastRun' ? ' lastRunAbility' : '');
-    const carryInfo = sourceType==='lastRun' ? `<span class='pill pill--carry'>Prev Run</span>` : '';
+    const isCarry = sourceType==='lastRun' || sourceType==='saved';
+    div.className = 'choice' + (isCarry ? ' carryAbility' : '');
+    const carryInfo = isCarry ? `<span class='pill pill--carry'>Carry</span>` : '';
     div.innerHTML = `<div class='title' style='color:${ab.color}'>${ab.name} <span class='pill'>${ab.rarity}</span> ${carryInfo}</div>
       <div class='row'><span>${ab.desc}</span></div>
       <div class='row'><span class='pill'>${ab.type}</span><span class='pill'>CD ${ab.cd}</span><span class='pill'>R ${ab.range}</span>${ab.hits>1?`<span class='pill'>x${ab.hits}</span>`:''}</div>
-      ${sourceLabel?`<div class='row sourceTag'>${sourceLabel}${sourceType==='lastRun'?" — carry over limit 2":''}</div>`:''}`;
+      ${sourceLabel?`<div class='row sourceTag'>${sourceLabel}${isCarry?" — carry-over pool (limit 2)":''}</div>`:''}`;
     const add = document.createElement('button');
     add.className = 'btn btn--small btn--primary';
     add.textContent = 'Add';
@@ -136,12 +137,14 @@ function openStarterLoadoutModal() {
     function alreadyChosen(){ return chosen.some(c => c.name===ab.name && c.type===ab.type); }
     add.onclick = () => {
       if (chosen.length >= 4) { add.textContent = 'Max 4'; return; }
-      if (sourceType==='lastRun') {
-        const alreadyCarry = chosen.filter(c => lastRun.some(l => l.name===c.name && l.type===c.type)).length;
+      if (isCarry) {
+        const alreadyCarry = chosen.filter(c => c.__carry).length;
         if (alreadyCarry >= 2 && !alreadyChosen()) { add.textContent = 'Max 2 carry'; return; }
       }
       if (alreadyChosen()) { add.textContent = 'Picked'; return; }
-      chosen.push(structuredClone ? structuredClone(ab) : JSON.parse(JSON.stringify(ab)));
+      const cloned = structuredClone ? structuredClone(ab) : JSON.parse(JSON.stringify(ab));
+      if (isCarry) cloned.__carry = true;
+      chosen.push(cloned);
       add.textContent = 'Picked';
       add.disabled = true;
       div.classList.add('picked');
@@ -182,7 +185,7 @@ function openStarterLoadoutModal() {
   chosenWrap.className = 'choices';
 
   // Sections layout
-  modalContent.appendChild(document.createElement('h3')).textContent = 'Choose up to 4 Abilities (need at least 1 attack, max 2 from previous run)';
+  modalContent.appendChild(document.createElement('h3')).textContent = 'Choose up to 4 Abilities (need at least 1 attack, max 2 carry-over)';
   modalContent.appendChild(poolWrap);
   modalContent.appendChild(document.createElement('h3')).textContent = 'Selected';
   modalContent.appendChild(chosenWrap);
@@ -210,22 +213,58 @@ function openStarterLoadoutModal() {
   let rerolled = false;
   const rerollBtn = document.createElement('button');
   rerollBtn.className = 'btn btn--small btn--ghost';
+
+  function refreshPoolButtons() {
+    const carryChosen = chosen.filter(c=>c.__carry).length;
+    const chosenKeys = new Set(chosen.map(c=>c.name+'|'+c.type));
+    poolWrap.querySelectorAll('.choice').forEach(card => {
+      const btn = card.querySelector('button.btn');
+      if (!btn) return;
+      const key = card.dataset.name + '|' + card.dataset.type;
+      const isCarry = !!card.dataset.carry;
+      if (chosenKeys.has(key)) {
+        btn.textContent = 'Picked';
+        btn.disabled = true;
+        card.classList.add('picked');
+      } else {
+        // Not chosen; determine if selectable
+        if (chosen.length >=4) {
+          btn.textContent = 'Max 4';
+          btn.disabled = true;
+        } else if (isCarry && carryChosen >=2) {
+          btn.textContent = 'Max 2 carry';
+          btn.disabled = true;
+        } else {
+          btn.textContent = 'Add';
+          btn.disabled = false;
+          card.classList.remove('picked');
+        }
+      }
+    });
+  }
   rerollBtn.textContent = 'Reroll (1x)';
   rerollBtn.onclick = () => {
     if (rerolled) return; // safety
     rerolled = true;
     poolWrap.innerHTML='';
     const fresh = genStarterPool();
-    fresh.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Generated')));
-    // re-add saved abilities after reroll
-    if (saved.length) saved.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Saved')));
+    fresh.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Generated','generated')));
+    // re-add saved and lastRun abilities after reroll
+    if (saved.length) saved.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Saved','saved')));
+    if (lastRun.length) {
+      const savedKeys = new Set(saved.map(a=>a.name+'|'+a.type));
+      lastRun.forEach(ab => {
+        if (!savedKeys.has(ab.name+'|'+ab.type)) poolWrap.appendChild(abilityCard(ab,'Last Run','lastRun')); else poolWrap.appendChild(abilityCard(ab,'Last Run (dup saved)','lastRun'));
+      });
+    }
     rerollBtn.textContent = 'Rerolled';
     rerollBtn.disabled = true;
+    refreshPoolButtons();
   };
   modalFooter.appendChild(rerollBtn);
   modalFooter.appendChild(startBtn);
   showModal();
-  renderChosen(); updateFooterState();
+  renderChosen(); updateFooterState(); refreshPoolButtons();
 }
 window.openStarterLoadoutModal = openStarterLoadoutModal;
 

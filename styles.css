@@ -451,9 +451,9 @@
         @keyframes cutBgFade { from { opacity:0; } to { opacity:1; } }
 
         /* Previous run ability highlighting */
-        .lastRunAbility {
+        .carryAbility {
           border:2px solid #ffbf47;
           background:linear-gradient(135deg,#2a1f00,#3a2a00 70%);
         }
-        .lastRunAbility .sourceTag { color:#ffbf47; font-size:11px; font-weight:700; }
+        .carryAbility .sourceTag { color:#ffbf47; font-size:11px; font-weight:700; }
         .pill.pill--carry { background:#ffbf47; color:#1b1400; border:1px solid #ffde85; }
