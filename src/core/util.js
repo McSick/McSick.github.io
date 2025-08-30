@@ -8,6 +8,47 @@
               ? true
               : localStorage.getItem("showHelpOnNewRun") === "true",
         };
+        // Persisted meta-progression: saved abilities player can bring into next run.
+        function loadSavedAbilities() {
+          try {
+            const raw = localStorage.getItem('savedAbilities');
+            if (!raw) return [];
+            const arr = JSON.parse(raw);
+            return Array.isArray(arr) ? arr.slice(0, 20) : [];
+          } catch (e) { return []; }
+        }
+        function saveAbilitiesProgress(abilities) {
+          try {
+            localStorage.setItem('savedAbilities', JSON.stringify(abilities.slice(0, 2)));
+          } catch (e) {}
+        }
+        function addSavedAbility(ab) {
+          const cur = loadSavedAbilities();
+          if (cur.length >= 2) return; // max 2 carry-over
+          if (!cur.some(x => x.name === ab.name && x.type === ab.type)) {
+            cur.push(minAbilityShape(ab));
+            saveAbilitiesProgress(cur);
+          }
+        }
+        function minAbilityShape(ab){
+          return {
+            name: ab.name,
+            rarity: ab.rarity,
+            color: ab.color,
+            type: ab.type,
+            dmg: ab.dmg,
+            heal: ab.heal,
+            shield: ab.shield,
+            range: ab.range,
+            cd: ab.cd,
+            hits: ab.hits,
+            element: ab.element,
+            desc: ab.desc
+          };
+        }
+        window.loadSavedAbilities = loadSavedAbilities;
+        window.addSavedAbility = addSavedAbility;
+        window.saveAbilitiesProgress = saveAbilitiesProgress;
         function setSetting(key, val) {
           SETTINGS[key] = !!val;
           try {

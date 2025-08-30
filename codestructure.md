@@ -40,6 +40,12 @@ High-level: A browser-based grid roguelite. Everything is plain JS loaded in `<s
 ## /src/ui
 - `effects_hud_helpers.js` – Shared HUD & effect utilities: `updateHUD()` (sync DOM elements for HP bar, gold, class, pages, armor, stage progress), status effect ticking/formatting, `addEffect`/`hasEffect` wrappers, shield/stealth text, possibly `tickEndTurnBuffs`, `processStartEffects`, `processEffects` used by `turns.js`.
 - `modal_ui.js` – Generic modal system: open/close logic for loot, talent, armor, help dialogs; dynamic content & buttons injected into `#modalContent`/`#modalFooter`; traps focus / handles dismissal; likely functions like `openLootModal()` referenced in `victoryCheck()`.
+	- Adds Starter Loadout builder (`openStarterLoadoutModal`) invoked right after class selection (before first room):
+		- Generates a pool of 8 random starter abilities (guaranteeing at least one attack). Single reroll allowed (button locks after use).
+		- Displays up to 2 persisted carry‑over abilities from previous runs (meta progression) alongside generated pool.
+		- Player can pick up to 4 (must include ≥1 attack). Duplicate selection is prevented; picked buttons disable & label changes to “Picked”.
+		- Random starting armor offer (single piece) can be equipped before the run.
+		- On confirm, chosen abilities are installed (cooldowns reset) and the first room is entered.
 - `inspect_modal.js` – Renders enlarged ability/item inspection details on long‑press/hover (full description, rarity color, stats breakdown) inside modal or a tooltip-style card.
 - `status_badges.js` – Draw-layer or DOM HUD overlay for per-entity status icons (burn, poison, bleed, shock, freeze, stun, stealth, shield) rendered above units (called via `drawStatusBadges(e)` inside `render.js`).
 - `render.js` – Main render loop & scene drawing. Functions: `drawGrid()` (background gradient, tiles, hazards, selection highlight with LOS/bocked cells feedback, enemies with animation & HP bars, player sprite + shields + stealth overlay, floating combat text, turn banner, toasts, screen hit flash). Maintains `tick` counter and runs animation damping for shake/hit flash. Starts continuous `requestAnimationFrame(loop)` in an unseen `loop()` call invoked from setup (`flow.js` or `run_setup.js`).
@@ -61,6 +67,7 @@ High-level: A browser-based grid roguelite. Everything is plain JS loaded in `<s
 - Progression – `STAGES` define sets of floors culminating in boss; stage progress bar updated via HUD; loot after combat offers abilities/armor/pages; pages used by Tome ability; talents selected via modal.
 - Rendering Data Pipeline – Sprite atlas metadata -> `drawFrame()` -> `render.js` composition of layers; calculations rely on shared grid constants from `canvas.js`.
 - Persistence – Minimal: user setting `showHelpOnNewRun` stored in `localStorage` plus possibly mute state.
+- Meta Progression (Carry‑Over Abilities) – New lightweight persistence layer in `util.js` (`loadSavedAbilities`, `addSavedAbility`, `saveAbilitiesProgress`) stores up to 2 trimmed ability objects (name + core stats) in `localStorage`. Loot modal adds a “Save (carry‑over)” button per reward ability (enforces the 2‑ability cap and uniqueness). Starter Loadout modal surfaces these saved abilities for immediate selection in the next run. Selection logic prevents duplicates, imposes max 4 starting abilities, and requires at least one attack type for viability. Reroll of generated starters is limited to a single use per run start.
 - Narrative / Cutscene System – `cutscenes.js` sits outside the modal system to give a cinematic overlay: persistent background + dual portraits with highlight, advancing via button/keyboard/backdrop click. Integrates with run bootstrap (`run_setup.js`) to optionally play an intro sequence before class selection. Designed to be data‑driven so adding new story beats only requires appending arrays in `CUTSCENES`.
 
 ## File Load Order Importance

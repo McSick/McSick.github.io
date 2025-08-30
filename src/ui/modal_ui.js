@@ -65,6 +65,152 @@ function openLoadoutModal() {
   showModal();
 }
 
+// Starter loadout builder: called after class select before first room.
+function openStarterLoadoutModal() {
+  modalTitle.textContent = "Starter Loadout";
+  modalContent.innerHTML = "";
+  modalFooter.innerHTML = "";
+
+  const wrap = document.createElement('div');
+  wrap.className = 'choices';
+
+  // Generate candidate abilities (ensure at least one damage attack)
+  function genStarterPool() {
+    const list = [];
+    let hasAttack = false;
+    for (let i = 0; i < 8; i++) {
+      const ab = makeAbility();
+      if (ab.type === 'attack') hasAttack = true;
+      list.push(ab);
+    }
+    if (!hasAttack) {
+      // replace first non-attack with an attack
+      const attack = (() => {
+        for (let tries = 0; tries < 30; tries++) {
+          const a = makeAbility();
+          if (a.type === 'attack') return a;
+        }
+        return makeAbility();
+      })();
+      const idx = list.findIndex(a => a.type !== 'attack');
+      if (idx >= 0) list[idx] = attack; else list[0] = attack;
+    }
+    return list;
+  }
+
+  const starterPool = genStarterPool();
+  const saved = (window.loadSavedAbilities ? loadSavedAbilities() : []).slice(0, 8);
+  const chosen = [];
+
+  function renderChosen() {
+    chosenWrap.innerHTML = '';
+    chosen.forEach((ab, i) => {
+      const d = document.createElement('div');
+      d.className = 'choice';
+      d.innerHTML = `<div class='title' style='color:${ab.color}'>${ab.name}</div><div class='row'><span>${ab.desc}</span></div>`;
+      const rm = document.createElement('button');
+      rm.className = 'btn btn--small btn--ghost';
+      rm.textContent = 'Remove';
+      rm.onclick = () => { chosen.splice(i,1); renderChosen(); updateFooterState(); };
+      d.appendChild(rm);
+      chosenWrap.appendChild(d);
+    });
+  }
+
+  function abilityCard(ab, sourceLabel) {
+    const div = document.createElement('div');
+    div.className = 'choice';
+    div.innerHTML = `<div class='title' style='color:${ab.color}'>${ab.name} <span class='pill'>${ab.rarity}</span></div>
+      <div class='row'><span>${ab.desc}</span></div>
+      <div class='row'><span class='pill'>${ab.type}</span><span class='pill'>CD ${ab.cd}</span><span class='pill'>R ${ab.range}</span>${ab.hits>1?`<span class='pill'>x${ab.hits}</span>`:''}</div>
+      ${sourceLabel?`<div class='row' style='opacity:.6;font-size:12px'>${sourceLabel}</div>`:''}`;
+    const add = document.createElement('button');
+    add.className = 'btn btn--small btn--primary';
+    add.textContent = 'Add';
+    const key = ab.name + '|' + ab.type;
+    function alreadyChosen(){ return chosen.some(c => c.name===ab.name && c.type===ab.type); }
+    add.onclick = () => {
+      if (chosen.length >= 4) { add.textContent = 'Max 4'; return; }
+      if (alreadyChosen()) { add.textContent = 'Picked'; return; }
+      chosen.push(structuredClone ? structuredClone(ab) : JSON.parse(JSON.stringify(ab)));
+      add.textContent = 'Picked';
+      add.disabled = true;
+      div.classList.add('picked');
+      renderChosen(); updateFooterState();
+    };
+    if (alreadyChosen()) { add.textContent='Picked'; add.disabled=true; }
+    div.appendChild(add);
+    return div;
+  }
+
+  const poolWrap = document.createElement('div');
+  poolWrap.className = 'choices';
+  starterPool.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Generated')));
+  if (saved.length) saved.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Saved')));
+
+  const armorPick = choice(ARMOR_POOL);
+  const armorDiv = document.createElement('div');
+  armorDiv.className = 'choice';
+  armorDiv.innerHTML = `<div class='title'>Starting Armor</div><div class='row'><b>${armorPick.name}</b>: ${armorPick.desc}</div>`;
+  const armorBtn = document.createElement('button');
+  armorBtn.className = 'btn btn--small btn--primary';
+  armorBtn.textContent = 'Equip';
+  let armorEquipped = null;
+  armorBtn.onclick = () => {
+    armorEquipped = armorPick;
+    armorBtn.textContent = 'Equipped';
+  };
+  armorDiv.appendChild(armorBtn);
+
+  const chosenWrap = document.createElement('div');
+  chosenWrap.className = 'choices';
+
+  // Sections layout
+  modalContent.appendChild(document.createElement('h3')).textContent = 'Choose up to 4 Abilities (need at least 1 attack)';
+  modalContent.appendChild(poolWrap);
+  modalContent.appendChild(document.createElement('h3')).textContent = 'Selected';
+  modalContent.appendChild(chosenWrap);
+  modalContent.appendChild(document.createElement('h3')).textContent = 'Armor';
+  modalContent.appendChild(armorDiv);
+
+  function updateFooterState() {
+    startBtn.disabled = !(chosen.length && chosen.some(a=>a.type==='attack'));
+  }
+
+  const startBtn = document.createElement('button');
+  startBtn.className = 'btn btn--small btn--primary';
+  startBtn.textContent = 'Begin Adventure';
+  startBtn.disabled = true;
+  startBtn.onclick = () => {
+    State.player.abilities = chosen.map(a => ({...a, cdLeft:0}));
+    if (armorEquipped) equipArmor(armorEquipped);
+    renderAbilityButtons();
+    updateHUD();
+    hideModal();
+    nextRoom();
+  };
+  let rerolled = false;
+  const rerollBtn = document.createElement('button');
+  rerollBtn.className = 'btn btn--small btn--ghost';
+  rerollBtn.textContent = 'Reroll (1x)';
+  rerollBtn.onclick = () => {
+    if (rerolled) return; // safety
+    rerolled = true;
+    poolWrap.innerHTML='';
+    const fresh = genStarterPool();
+    fresh.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Generated')));
+    // re-add saved abilities after reroll
+    if (saved.length) saved.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Saved')));
+    rerollBtn.textContent = 'Rerolled';
+    rerollBtn.disabled = true;
+  };
+  modalFooter.appendChild(rerollBtn);
+  modalFooter.appendChild(startBtn);
+  showModal();
+  renderChosen(); updateFooterState();
+}
+window.openStarterLoadoutModal = openStarterLoadoutModal;
+
 function openRoomModal() {
   modalTitle.textContent = State.roomType;
   modalContent.innerHTML = "";
@@ -356,7 +502,28 @@ function openLootModal() {
       replaceAbilityFlow(ab, 0);
       SFX.beep("loot");
     };
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn--small btn--ghost';
+    saveBtn.textContent = 'Save (carry-over)';
+    saveBtn.onclick = () => {
+      if (window.addSavedAbility) {
+        const before = loadSavedAbilities();
+        if (before.length >= 2) {
+          saveBtn.textContent = 'Carry limit reached';
+          return;
+        }
+        addSavedAbility(ab);
+        const after = loadSavedAbilities();
+        if (after.length > before.length) {
+          saveBtn.textContent = 'Saved';
+          saveBtn.disabled = true;
+        } else {
+          saveBtn.textContent = 'Already saved';
+        }
+      }
+    };
     d.appendChild(b);
+    d.appendChild(saveBtn);
     abWrap.appendChild(d);
   });
   root.appendChild(document.createElement("h3")).textContent =

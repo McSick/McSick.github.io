@@ -348,6 +348,7 @@
       .choice .btn {
         margin-top: 8px;
       } /* space inside cards */
+  .choices.compact .choice { padding:8px; }
       .footerRow .btn {
         padding: 10px 14px;
       } /* footer sizing */

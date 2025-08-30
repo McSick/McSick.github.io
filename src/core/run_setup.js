@@ -15,12 +15,20 @@ function openClassSelect() {
               State.player.class = name;
               State.player.spriteSet = spriteSetForClass(name);
               if (def.onStart) def.onStart(State.player);
-              State.player.abilities = newAbilitySet();
+              State.player.abilities = []; // will be filled by starter loadout selection
               State._flurryUsed = false;
               renderAbilityButtons();
               updateHUD();
               hideModal();
-              nextRoom();
+              // Open new starter loadout builder (random + saved abilities + armor)
+              if (typeof openStarterLoadoutModal === 'function') {
+                openStarterLoadoutModal();
+              } else {
+                // fallback: start room immediately with random abilities
+                State.player.abilities = newAbilitySet();
+                renderAbilityButtons();
+                nextRoom();
+              }
               SFX.beep("ui");
             };
             d.appendChild(b);
