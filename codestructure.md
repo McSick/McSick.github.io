@@ -44,6 +44,15 @@ High-level: A browser-based grid roguelite. Everything is plain JS loaded in `<s
 - `status_badges.js` – Draw-layer or DOM HUD overlay for per-entity status icons (burn, poison, bleed, shock, freeze, stun, stealth, shield) rendered above units (called via `drawStatusBadges(e)` inside `render.js`).
 - `render.js` – Main render loop & scene drawing. Functions: `drawGrid()` (background gradient, tiles, hazards, selection highlight with LOS/bocked cells feedback, enemies with animation & HP bars, player sprite + shields + stealth overlay, floating combat text, turn banner, toasts, screen hit flash). Maintains `tick` counter and runs animation damping for shake/hit flash. Starts continuous `requestAnimationFrame(loop)` in an unseen `loop()` call invoked from setup (`flow.js` or `run_setup.js`).
 - `inspect_modal.js` + `modal_ui.js` integrate with ability hover text shown in `#abilityInfo` and long‑press detection from input.
+- `cutscenes.js` – Lightweight narrative / dialogue system. Exposes `startCutscene(key, { onDone })` & `isCutsceneActive()`. A `CUTSCENES` map defines arrays of step objects. Each step supports a legacy single‑portrait form `{ speaker, text, img, side }` or extended dual‑portrait & background form:
+	- `speaker` (string) – label shown above dialogue box.
+	- `text` – supports `\n` line breaks + simple markup: `*italic*`, `**bold**`.
+	- `bg` – (optional) full‑screen background image path; persists until replaced.
+	- `leftImg` / `rightImg` – (optional) portrait image paths; persist between steps so only changes need re‑specifying.
+	- `active` – `'left' | 'right'` to glow the speaking portrait and dim the other.
+	- `effect` – reserved future hook (e.g., shake/flash).
+	- Legacy fields `img` + `side` auto‑map to `leftImg` / `rightImg` if extended fields are not present.
+	Runtime state stores persistent `bg`, `leftSrc`, `rightSrc` so you can build long conversations cheaply. Clicking backdrop, pressing Enter/Space advances; Esc skips. On completion, `onDone` callback (used in `startRun()` flow) resumes normal UI (e.g., opens class select). CSS additions provide layered background (`.cutBg`), portrait fade/slide‑in, active/inactive highlight, and responsive layout.
 
 ## Cross-cutting Concepts
 - Effects System – Entities have `effects` arrays storing timed buffs/debuffs (STEALTH, HASTE, BURN, POISON, BLEED, SHOCK, FREEZE, STUN, etc.). Helper functions manage application, stacking, decay at start/end of turns, and interactions (e.g., Rogue applying STEALTH, Fighter HASTE, Cleric cleansing debuff on heal).
@@ -52,6 +61,7 @@ High-level: A browser-based grid roguelite. Everything is plain JS loaded in `<s
 - Progression – `STAGES` define sets of floors culminating in boss; stage progress bar updated via HUD; loot after combat offers abilities/armor/pages; pages used by Tome ability; talents selected via modal.
 - Rendering Data Pipeline – Sprite atlas metadata -> `drawFrame()` -> `render.js` composition of layers; calculations rely on shared grid constants from `canvas.js`.
 - Persistence – Minimal: user setting `showHelpOnNewRun` stored in `localStorage` plus possibly mute state.
+- Narrative / Cutscene System – `cutscenes.js` sits outside the modal system to give a cinematic overlay: persistent background + dual portraits with highlight, advancing via button/keyboard/backdrop click. Integrates with run bootstrap (`run_setup.js`) to optionally play an intro sequence before class selection. Designed to be data‑driven so adding new story beats only requires appending arrays in `CUTSCENES`.
 
 ## File Load Order Importance
 Scripts load in a specific order so global symbols exist when referenced (no modules/imports). Core utils/state must precede systems depending on them (combat, UI, input). Rendering and flow run after everything so they can access all helpers.
