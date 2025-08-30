@@ -157,6 +157,21 @@ const CUTSCENES = {
       active: 'left'
     }
   ],
+  death: [
+    { speaker: 'System', text: '<b>Vital pattern collapse detected.</b>', bg: 'src/assets/cutscenes/summoning_chamber.png', active: 'left' },
+    { speaker: 'Guide Sprite', text: 'You ceased. Briefly. Anchor threads held—acceptable integrity loss.', leftImg: 'src/assets/cutscenes/guide_portrait.png', active: 'left' },
+    { speaker: 'You', text: 'Feels less than acceptable. Everything went white... then cold.', rightImg: 'src/assets/cutscenes/hero_portrait.png', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Death here is a negotiable state. Memory drift begins after several minutes; we recalled you sooner.', active: 'left' },
+    { speaker: 'You', text: 'So I really died. Did it at least matter?', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Data gathered. Fracture response curves updated. Your failure improves the next attempt. Efficient humility.', active: 'left' },
+    { speaker: 'You', text: 'Great. So now I get to “try again” with inspirational cynicism.', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Carry forward echoes: choose up to two abilities from your prior pattern. They will imprint early next cycle.', active: 'left' },
+    { speaker: 'You', text: 'Only two? I had a whole kit going.', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Stability tax. More would smear your soul lattice. Pick wisely—burst, sustain, mobility, or synergy anchors.', active: 'left' },
+    { speaker: 'You', text: 'Fine. Load the interface. I want revenge—and data, apparently.', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Interface primed. Select carry-overs; then we reinitialize class and starter construction.', active: 'left' },
+    { speaker: 'System', text: '<b>Carry-over selection unlocked.</b> Choose up to 2 abilities from last run.', active: 'left' }
+  ],
 };
 
 let _cutscene = null; // { key, index, steps, bg, leftSrc, rightSrc }

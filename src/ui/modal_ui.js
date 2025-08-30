@@ -100,6 +100,10 @@ function openStarterLoadoutModal() {
 
   const starterPool = genStarterPool();
   const saved = (window.loadSavedAbilities ? loadSavedAbilities() : []).slice(0, 8);
+  let lastRun = [];
+  try { lastRun = JSON.parse(localStorage.getItem('lastRunAbilities')||'[]') || []; } catch(e) { lastRun = []; }
+  // Filter out any malformed entries
+  lastRun = Array.isArray(lastRun) ? lastRun.filter(a=>a && a.name && a.type) : [];
   const chosen = [];
 
   function renderChosen() {
@@ -117,13 +121,14 @@ function openStarterLoadoutModal() {
     });
   }
 
-  function abilityCard(ab, sourceLabel) {
+  function abilityCard(ab, sourceLabel, sourceType) {
     const div = document.createElement('div');
-    div.className = 'choice';
-    div.innerHTML = `<div class='title' style='color:${ab.color}'>${ab.name} <span class='pill'>${ab.rarity}</span></div>
+    div.className = 'choice' + (sourceType==='lastRun' ? ' lastRunAbility' : '');
+    const carryInfo = sourceType==='lastRun' ? `<span class='pill pill--carry'>Prev Run</span>` : '';
+    div.innerHTML = `<div class='title' style='color:${ab.color}'>${ab.name} <span class='pill'>${ab.rarity}</span> ${carryInfo}</div>
       <div class='row'><span>${ab.desc}</span></div>
       <div class='row'><span class='pill'>${ab.type}</span><span class='pill'>CD ${ab.cd}</span><span class='pill'>R ${ab.range}</span>${ab.hits>1?`<span class='pill'>x${ab.hits}</span>`:''}</div>
-      ${sourceLabel?`<div class='row' style='opacity:.6;font-size:12px'>${sourceLabel}</div>`:''}`;
+      ${sourceLabel?`<div class='row sourceTag'>${sourceLabel}${sourceType==='lastRun'?" — carry over limit 2":''}</div>`:''}`;
     const add = document.createElement('button');
     add.className = 'btn btn--small btn--primary';
     add.textContent = 'Add';
@@ -131,6 +136,10 @@ function openStarterLoadoutModal() {
     function alreadyChosen(){ return chosen.some(c => c.name===ab.name && c.type===ab.type); }
     add.onclick = () => {
       if (chosen.length >= 4) { add.textContent = 'Max 4'; return; }
+      if (sourceType==='lastRun') {
+        const alreadyCarry = chosen.filter(c => lastRun.some(l => l.name===c.name && l.type===c.type)).length;
+        if (alreadyCarry >= 2 && !alreadyChosen()) { add.textContent = 'Max 2 carry'; return; }
+      }
       if (alreadyChosen()) { add.textContent = 'Picked'; return; }
       chosen.push(structuredClone ? structuredClone(ab) : JSON.parse(JSON.stringify(ab)));
       add.textContent = 'Picked';
@@ -145,8 +154,15 @@ function openStarterLoadoutModal() {
 
   const poolWrap = document.createElement('div');
   poolWrap.className = 'choices';
-  starterPool.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Generated')));
-  if (saved.length) saved.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Saved')));
+  starterPool.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Generated','generated')));
+  if (saved.length) saved.forEach(ab => poolWrap.appendChild(abilityCard(ab,'Saved','saved')));
+  if (lastRun.length) {
+    // de-duplicate with saved to avoid double counting (by name+type)
+    const savedKeys = new Set(saved.map(a=>a.name+'|'+a.type));
+    lastRun.forEach(ab => {
+      if (!savedKeys.has(ab.name+'|'+ab.type)) poolWrap.appendChild(abilityCard(ab,'Last Run','lastRun')); else poolWrap.appendChild(abilityCard(ab,'Last Run (dup saved)','lastRun'));
+    });
+  }
 
   const armorPick = choice(ARMOR_POOL);
   const armorDiv = document.createElement('div');
@@ -166,12 +182,14 @@ function openStarterLoadoutModal() {
   chosenWrap.className = 'choices';
 
   // Sections layout
-  modalContent.appendChild(document.createElement('h3')).textContent = 'Choose up to 4 Abilities (need at least 1 attack)';
+  modalContent.appendChild(document.createElement('h3')).textContent = 'Choose up to 4 Abilities (need at least 1 attack, max 2 from previous run)';
   modalContent.appendChild(poolWrap);
   modalContent.appendChild(document.createElement('h3')).textContent = 'Selected';
   modalContent.appendChild(chosenWrap);
   modalContent.appendChild(document.createElement('h3')).textContent = 'Armor';
   modalContent.appendChild(armorDiv);
+
+  // No auto-prefill; user must choose. Carry-over limit enforced per-card.
 
   function updateFooterState() {
     startBtn.disabled = !(chosen.length && chosen.some(a=>a.type==='attack'));
@@ -621,16 +639,37 @@ function afterRewards() {
   nextRoom();
 }
 function gameOver() {
+  try {
+    // Store snapshot of current run's first 4 abilities for next run prefill
+    if (State.player && Array.isArray(State.player.abilities)) {
+      const snap = State.player.abilities.slice(0,4).map(a => {
+        // trim volatile runtime fields
+        const { cdLeft, chargesLeft, ...rest } = a;
+        return rest;
+      });
+      localStorage.setItem('lastRunAbilities', JSON.stringify(snap));
+    }
+  } catch(e) { /* non-fatal */ }
+
+  // Launch death cutscene, then after it completes show carry-over modal or straight to class selection.
+  if (window.startCutscene) {
+    startCutscene('death', {
+      onDone: () => {
+        // After cutscene, open class selection (which leads to starter loadout) directly.
+        hideModal(); // ensure any stale modal hidden
+        startRun();
+      }
+    });
+    return;
+  }
+  // Fallback if cutscenes not available
   modalTitle.textContent = "Game Over";
-  modalContent.innerHTML = `<p>You fell on <b>Floor ${State.floor}</b> with <span class="gold"><b>${State.gold} gold</b></span>.</p>`;
+  modalContent.innerHTML = `<p>You fell on <b>Floor ${State.floor}</b> with <span class="gold"><b>${State.gold} gold</b></span>.</p><p>(Cutscene system unavailable)</p>`;
   modalFooter.innerHTML = "";
   const b = document.createElement("button");
   b.className = "btn btn--small btn--primary";
   b.textContent = "Restart run";
-  b.onclick = () => {
-    startRun();
-    hideModal();
-  };
+  b.onclick = () => { startRun(); hideModal(); };
   modalFooter.appendChild(b);
   showModal();
 }
