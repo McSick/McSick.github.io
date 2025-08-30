@@ -59,10 +59,19 @@ function openClassSelect() {
           renderAbilityButtons();
           updateHUD();
           addToast("A new run begins...", "#cde3ff", 120);
-          if (SETTINGS.showHelpOnNewRun) {
-            openControlsModal({ afterClose: () => openClassSelect() });
+          const launchClassSelect = () => {
+            if (SETTINGS.showHelpOnNewRun) {
+              openControlsModal({ afterClose: () => openClassSelect() });
+            } else {
+              openClassSelect();
+            }
+          };
+          // If intro cutscene not yet viewed this session, play it first
+          if (!State._introPlayed && window.startCutscene) {
+            State._introPlayed = true;
+            startCutscene('intro', { onDone: launchClassSelect });
           } else {
-            openClassSelect();
+            launchClassSelect();
           }
         }
 
