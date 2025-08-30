@@ -63,7 +63,7 @@ const RARITY = [
           if (type === "attack") {
             dmg = Math.round(choice([7, 9, 11, 13, 15]) * mult);
             range = choice([1, 2, 3]);
-            cd = choice([0, 1, 2]);
+            cd = choice([1, 2]);
             hits = Math.random() < 0.15 ? 2 : 1;
             element = ele || null;
             desc = `Deal ${dmg}${
@@ -72,7 +72,7 @@ const RARITY = [
           }
           if (type === "heal") {
             heal = Math.round(choice([10, 14, 18, 22]) * mult);
-            cd = choice([1, 2]);
+            cd = choice([2,3]);
             desc = "Restore " + heal + " HP. (Cleric: Shield & cleanse)";
           }
           if (type === "shield") {
@@ -82,7 +82,7 @@ const RARITY = [
           }
           if (type === "move") {
             range = choice([2, 3]);
-            cd = choice([1, 2]);
+            cd = choice([ 2,3]);
             desc = `Teleport within ${range} tiles.`;
           }
           if (type === "stealth") {
