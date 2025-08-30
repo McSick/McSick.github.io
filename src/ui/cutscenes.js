@@ -172,6 +172,20 @@ const CUTSCENES = {
     { speaker: 'Guide Sprite', text: 'Interface primed. Select carry-overs; then we reinitialize class and starter construction.', active: 'left' },
     { speaker: 'System', text: '<b>Carry-over selection unlocked.</b> Choose up to 2 abilities from last run.', active: 'left' }
   ],
+  bossClear: [
+    { speaker: 'System', text: '<b>Fracture Node Neutralized.</b>', bg: 'src/assets/cutscenes/summoning_chamber.png', active: 'left' },
+    { speaker: 'Guide Sprite', text: 'Stabilization wave propagating. Entropy delta dropping.', leftImg: 'src/assets/cutscenes/guide_portrait.png', active: 'left' },
+    { speaker: 'You', text: 'Translation: I did it? That masked thing loses this round.', rightImg: 'src/assets/cutscenes/hero_confident.png', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Local shard secure. Wider lattice still degraded. Additional incursions inevitable.', active: 'left' },
+    { speaker: 'You', text: 'So no vacation yet. What about my return odds?', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Return probability: +3.7%. Marginal but nonzero. Pages retained improve compounding.', active: 'left' },
+    { speaker: 'You', text: 'I’ll take marginal. Anything new unlocked?', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Algorithmic seeds recalibrated. Future rooms: higher adaptive resistance. Opportunity for stronger relic alignments.', active: 'left' },
+    { speaker: 'You', text: 'Harder fights, better loot. Classic escalation curve.', active: 'right' },
+    { speaker: 'Guide Sprite', text: 'Prepare to reinitialize cycle. Consider refining opening kit—synergy density matters.', active: 'left' },
+    { speaker: 'You', text: 'Reset me. I’m not done until the mask cracks.', active: 'right' },
+    { speaker: 'System', text: '<b>Cycle complete.</b> Begin a new run to push deeper.', active: 'left' }
+  ],
 };
 
 let _cutscene = null; // { key, index, steps, bg, leftSrc, rightSrc }

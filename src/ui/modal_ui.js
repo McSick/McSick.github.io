@@ -624,22 +624,21 @@ function openLootModal() {
 function afterRewards() {
   const wasBoss = State.roomType === "BOSS";
   if (wasBoss) {
-    modalTitle.textContent = "Run Cleared!";
-    modalContent.innerHTML = `<p>You extinguished the <b>${STAGES[State.stage].boss.name
-      }</b> and calmed the <b>${STAGES[State.stage].name
-      }</b>.</p><p>Floor reached: <b>${State.floor
-      }</b> • Gold: <span class='gold'><b>${State.gold}</b></span></p>`;
-    modalFooter.innerHTML = "";
-    const b = document.createElement("button");
-    b.className = "btn btn--small btn--primary";
-    b.textContent = "Start a new run";
-    b.onclick = () => {
-      startRun();
-      hideModal();
-    };
-    modalFooter.appendChild(b);
-    showModal();
-    return;
+    hideModal();
+    if (window.startCutscene) {
+      startCutscene('bossClear', { onDone: () => { startRun(); } });
+    } else {
+      modalTitle.textContent = "Run Cleared!";
+      modalContent.innerHTML = `<p>You extinguished the <b>${STAGES[State.stage].boss.name}</b> and calmed the <b>${STAGES[State.stage].name}</b>.</p>`;
+      modalFooter.innerHTML = "";
+      const b = document.createElement('button');
+      b.className = 'btn btn--small btn--primary';
+      b.textContent = 'Start a new run';
+      b.onclick = () => { startRun(); hideModal(); };
+      modalFooter.appendChild(b);
+      showModal();
+    }
+    return;    
   }
   State.floor++;
   State.stageFloor++;
