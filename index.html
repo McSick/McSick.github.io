@@ -1,128 +1,284 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <title>Fantasy Roguelite — Organized</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-<div id="gameWrap">
-      <canvas id="game"></canvas>
 
-      <div class="hud">
-        <div class="leftStack">
-          <div class="stat">
-            Room: <span id="roomType">-</span>
-            <span id="roomTheme" style="opacity: 0.8"></span>
-          </div>
-          <div class="stat smallRow">
-            <span>HP</span>
-            <div class="hpBar">
-              <div id="hpFill" class="hpFill" style="width: 100%"></div>
-            </div>
-          </div>
-          <div class="stat">Gold: <span id="gold" class="gold">0</span></div>
-          <div class="stat">Class: <span id="clazz" class="class">-</span></div>
-          <div class="stat">Pages: <span id="pages" class="pages">0</span></div>
-          <div class="stat">
-            Armor: <span id="armorName" class="armor">None</span>
-          </div>
-          <div class="stat smallRow">
-            <span>Stage:</span>
-            <div
-              class="progress"
-              style="
-                width: 200px;
-                height: 10px;
-                background: #283050;
-                border-radius: 999px;
-                overflow: hidden;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-              "
-            >
-              <div
-                id="stageProg"
-                class="progressFill"
-                style="
-                  height: 100%;
-                  width: 0%;
-                  background: linear-gradient(90deg, #6fe7ff, #b58cff);
-                "
-              ></div>
-            </div>
-            <span id="stageLabel" style="opacity: 0.8"></span>
-          </div>
-          <div
-            class="stat"
-            id="abilityInfo"
-            style="
-              max-width: 38vw;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              opacity: 0.9;
-            "
-          >
-            Click/tap an ability, then tap a tile. Hover to see details here.
-          </div>
-        </div>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="./vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cat-city-game</title>
+  <script type="module" crossorigin src="./assets/index-B_bHDfI4.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-B7my3jxw.css">
+</head>
 
-        <div class="stat rightStack">
-          <button id="loadoutBtn" class="miniBtn">☰ Loadout</button>
-          <button id="helpBtn" class="miniBtn" title="Controls & guide">
-            ❓ Help
-          </button>
-          <button id="muteBtn" class="miniBtn" title="Toggle sound">🔊</button>
-          <button id="restartBtn" class="miniBtn">↻ Restart</button>
-        </div>
+<body>
+  <div id="ui-layer">
+    <!-- Hot/Cold Indicator -->
+    <div id="scent-dist" style="
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2em;
+        font-weight: bold;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        pointer-events: none;
+    "></div>
+
+    <!-- Interaction Prompt -->
+    <div id="interaction-prompt" style="
+        display: none;
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #ffff00;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        pointer-events: none;
+        background: rgba(0,0,0,0.5);
+        padding: 10px 20px;
+        border-radius: 20px;
+    ">Press E</div>
+
+    <!-- TO-DO LIST (Goose Style) -->
+    <div id="todo-notebook" style="
+        display: none; /* Toggled */
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 400px;
+        height: 600px; /* Fixed height */
+        max-height: 80vh;
+        overflow-y: auto; /* Scrollable */
+        background: #fdfdf0; /* Paper color */
+        box-shadow: 10px 10px 30px rgba(0,0,0,0.3);
+        border-radius: 5px;
+        padding: 40px;
+        font-family: 'Courier New', Courier, monospace; /* Typewriter/Handwritten vibe */
+        color: #333;
+        transform-origin: center;
+        z-index: 2000;
+        pointer-events: none; /* Let clicks pass through if just viewing? No, it should block clicks perhaps? */
+    ">
+      <h2 style="
+            text-align: center; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 10px;
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        ">To Do List</h2>
+
+      <ul id="mission-list" style="
+            list-style: none;
+            padding: 0;
+            font-size: 1.2em;
+            line-height: 1.8em;
+        ">
+      </ul>
+      <ul id="mission-list" style="
+            list-style: none;
+            padding: 0;
+            font-size: 1.2em;
+            line-height: 1.8em;
+        ">
+      </ul>
+
+      <div style="
+            font-size: 0.8em; 
+            color: #888;
+        ">Press TAB / START to close</div>
+    </div>
+
+    <style>
+      #todo-notebook {
+        pointer-events: auto !important;
+      }
+    </style>
+
+    <!-- Full Map Overlay (Moved out of Notebook) -->
+    <div id="full-map-overlay" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.85);
+        z-index: 3000;
+        color: white;
+        font-family: sans-serif;
+    ">
+      <canvas id="full-map-canvas" style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fdfdf0;
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        "></canvas>
+
+      <!-- Legend -->
+      <div style="
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid white;
+        ">
+        <h3>LEGEND</h3>
+        <div style="display:flex;align-items:center;margin:10px 0;"><span
+            style="color:red;font-size:20px;margin-right:10px;">➤</span> You</div>
+        <div style="display:flex;align-items:center;margin:10px 0;"><span
+            style="color:cyan;font-size:30px;margin-right:10px;">●</span> Family</div>
+        <div style="display:flex;align-items:center;margin:10px 0;"><span
+            style="color:yellow;font-size:20px;margin-right:10px;">▲</span> Pizza</div>
+        <div style="display:flex;align-items:center;margin:10px 0;"><span
+            style="color:lime;font-size:20px;margin-right:10px;">■</span> Dumpster</div>
+        <div style="display:flex;align-items:center;margin:10px 0;"><span
+            style="color:#8b4513;font-size:20px;margin-right:10px;">■</span> Box</div>
       </div>
 
-      <div class="controls">
-        <div class="dpad">
-          <button class="up" data-dir="up">▲</button>
-          <button class="down" data-dir="down">▼</button>
-          <button class="left" data-dir="left">◀</button>
-          <button class="right" data-dir="right">▶</button>
-        </div>
-        <div class="abilities" id="abilities"></div>
-      </div>
-
-      <div class="modal" id="modal">
-        <div class="card" id="modalCard">
-          <h2 id="modalTitle">Loot!</h2>
-          <div id="modalContent"></div>
-          <div class="footerRow" id="modalFooter"></div>
-        </div>
+      <div style="position:absolute; bottom:30px; width:100%; text-align:center; font-size:1.2em;">
+        Press <b>M</b> to Close
       </div>
     </div>
 
-<!-- Scripts split from the original monolithic file; load in the original order -->
+    <!-- Minimap -->
+    <canvas id="minimap" width="200" height="200" style="
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        border-radius: 50%; /* Circle */
+        border: 4px solid #fff;
+        background: rgba(255, 255, 240, 0.8); /* Paper-ish background */
+        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        z-index: 1000;
+    "></canvas>
+  </div>
 
-    <script src="src/core/util.js"></script>
-    <script src="src/core/canvas.js"></script>
-    <script src="src/core/audio.js"></script>
-    <script src="src/core/state.js"></script>
-    <script src="src/assets/atlas_0x72_tileset_png.js"></script>
-    <script src="src/assets/enemies_sprites.js"></script>
-    <script src="src/assets/story_stages.js"></script>
-    <script src="src/map/tiles_map.js"></script>
-    <script src="src/combat/classes_talents.js"></script>
-    <script src="src/combat/armor.js"></script>
-    <script src="src/combat/abilities_unchanged.js"></script>
-    <script src="src/combat/turns.js"></script>
-    <script src="src/ui/effects_hud_helpers.js"></script>
-    <script src="src/ui/modal_ui.js"></script>
-    <script src="src/ui/inspect_modal.js"></script>
-    <script src="src/ui/status_badges.js"></script>
-    <script src="src/ui/render.js"></script>
-    <script src="src/input/input.js"></script>
-    <script src="src/input/tap_targeting.js"></script>
-    <script src="src/input/keyboard_input.js"></script>
-    <script src="src/input/smart_self_cast_helper_reuse_the_normal_targeting_path.js"></script>
-  <script src="src/ui/cutscenes.js"></script>
-    <script src="src/core/flow.js"></script>
-    <script src="src/core/run_setup.js"></script>
-    <script src="src/core/self_tests.js"></script>
-  </body>
+  <!-- Directional Indicator (Keep this separate) -->
+  <div id="direction-indicator" style="
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 999;
+    ">
+    <div id="dir-arrow" style="
+            font-size: 150px;
+            color: rgba(255, 200, 100, 0.95);
+            text-shadow: 0 0 30px orange, 0 0 60px orange, 0 0 90px gold;
+            transition: transform 0.3s ease-out;
+            animation: pulse 0.5s ease-in-out infinite;
+        ">▲</div>
+  </div>
+  <style>
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    #direction-indicator {
+      transition: opacity 0.5s ease-out;
+    }
+  </style>
+
+  <!-- Settings Button -->
+  <button id="btn-settings"
+    style="position: absolute; top: 20px; right: 20px; font-size: 24px; cursor: pointer; background: rgba(0,0,0,0.5); border: 2px solid white; color: white; border-radius: 50%; width: 50px; height: 50px; z-index: 1000;">⚙️</button>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal"
+    style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; color: white; border: 2px solid white; font-family: sans-serif; min-width: 300px; z-index: 1001; text-align: center;">
+    <h2>Settings</h2>
+
+    <div style="margin: 20px 0;">
+      <label for="inp-sensitivity">Look Sensitivity: <span id="val-sensitivity">1.0</span></label><br />
+      <input type="range" id="inp-sensitivity" min="0.1" max="3.0" step="0.1" value="1.0"
+        style="width: 100%; margin-top: 5px;">
+    </div>
+
+    <div style="margin: 20px 0;">
+      <label for="inp-distance">Camera Distance: <span id="val-distance">5.0</span></label><br />
+      <input type="range" id="inp-distance" min="2.0" max="10.0" step="0.5" value="5.0"
+        style="width: 100%; margin-top: 5px;">
+    </div>
+
+    <hr style="border: 1px solid #555; margin: 20px 0;">
+
+    <h3>Controls</h3>
+    <table style="width: 100%; text-align: left; border-collapse: collapse; margin-bottom: 20px;">
+      <thead>
+        <tr style="border-bottom: 1px solid #777;">
+          <th style="padding: 5px;">Action</th>
+          <th style="padding: 5px;">Keyboard</th>
+          <th style="padding: 5px;">Gamepad</th>
+        </tr>
+      </thead>
+      <tbody style="font-size: 0.9em; color: #ddd;">
+        <tr>
+          <td style="padding: 5px;">Move</td>
+          <td style="padding: 5px;">W, A, S, D</td>
+          <td style="padding: 5px;">Left Stick</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px;">Jump</td>
+          <td style="padding: 5px;">Space</td>
+          <td style="padding: 5px;">A (Btn 0)</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px;">Interact</td>
+          <td style="padding: 5px;">E</td>
+          <td style="padding: 5px;">B (Btn 1)</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px;">Meow</td>
+          <td style="padding: 5px;">F</td>
+          <td style="padding: 5px;">X (Btn 2)</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px;">Look</td>
+          <td style="padding: 5px;">Mouse</td>
+          <td style="padding: 5px;">Right Stick</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px;">Notebook</td>
+          <td style="padding: 5px;">Tab</td>
+          <td style="padding: 5px;">Select</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px;">Map</td>
+          <td style="padding: 5px;">M</td>
+          <td style="padding: 5px;">Start</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px;">Flip Page</td>
+          <td style="padding: 5px;">(Mouse)</td>
+          <td style="padding: 5px;">LB / RB</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <button id="btn-close-settings" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Close & Save</button>
+  </div>
+  <div id="app"></div>
+</body>
+
 </html>
